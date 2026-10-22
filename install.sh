@@ -121,16 +121,21 @@ if [ -z "$from" ]; then
   [ -n "$tag" ] || die "could not reach GitHub to find the latest release; pass --version <tag>"
 fi
 
-if [ "$force" != 1 ] && [ -z "$from" ] && [ -n "$installed" ] && [ "$installed" = "$tag" ]; then
+# Already on that tag: skip the download, but still check the config and the
+# running view below, since either may be what's out of date.
+skip=0
+if [ "$force" != 1 ] && [ -z "$from" ] && [ -n "$installed" ] && [ "$installed" = "$tag" ] && [ -x "$bin" ]; then
   say "already on $tag"
-  exit 0
+  skip=1
 fi
 
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/otty-snippets.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT INT TERM
 
 src_bin=""
-if [ -n "$from" ]; then
+if [ "$skip" = 1 ]; then
+  :
+elif [ -n "$from" ]; then
   [ -f "$from" ] || die "no such file: $from"
   src_bin=$from
   [ -n "$tag" ] || tag=local
@@ -150,25 +155,32 @@ else
   [ -n "$src_bin" ] || die "$ASSET does not contain a $BIN binary"
 fi
 
-if command -v file >/dev/null 2>&1; then
-  file "$src_bin" | grep -q 'Mach-O' || die "not a macOS binary: $src_bin"
+if [ "$skip" = 0 ]; then
+  if command -v file >/dev/null 2>&1; then
+    file "$src_bin" | grep -q 'Mach-O' || die "not a macOS binary: $src_bin"
+  fi
+
+  # ---- install ----------------------------------------------------------------
+
+  mkdir -p "$dir"
+  if [ -x "$bin" ]; then
+    cp -p "$bin" "$bin.bak"
+    say "kept the previous build as $bin.bak"
+  fi
+  cp "$src_bin" "$bin.new"
+  chmod 755 "$bin.new"
+  mv "$bin.new" "$bin"
+  # Downloaded archives carry the quarantine flag; this binary has no signature
+  # to clear it, so drop it here instead of failing on first launch.
+  xattr -d com.apple.quarantine "$bin" 2>/dev/null || true
+  printf '%s\n' "$tag" > "$dir/.version"
+  say "installed $bin ($tag)"
 fi
 
-# ---- install ------------------------------------------------------------------
-
-mkdir -p "$dir"
-if [ -x "$bin" ]; then
-  cp -p "$bin" "$bin.bak"
-  say "kept the previous build as $bin.bak"
-fi
-cp "$src_bin" "$bin.new"
-chmod 755 "$bin.new"
-mv "$bin.new" "$bin"
-# Downloaded archives carry the quarantine flag; this binary has no signature to
-# clear it, so drop it here instead of failing on first launch.
-xattr -d com.apple.quarantine "$bin" 2>/dev/null || true
-printf '%s\n' "$tag" > "$dir/.version"
-say "installed $bin ($tag)"
+# views lists the pids of running copies of $bin.
+views() {
+  ps -axo pid=,command= | awk -v b="$bin" '$2 == b {print $1}'
+}
 
 # ---- configure Otty -----------------------------------------------------------
 
@@ -198,12 +210,18 @@ if [ "$do_config" = 1 ]; then
     esac
   fi
 
-  cmd="$bin"
-  [ -n "$lang" ] && cmd="$bin --lang $lang"
+  # Otty starts a view when the panel opens and restarts it only when its
+  # command changes; a config reload alone leaves the old process running. So
+  # the command alternates between two spellings of the same language flag,
+  # which makes every run (even on the same tag) bring up a fresh copy.
+  [ -n "$lang" ] || lang=en
+  case "$want" in
+    *"command=\"$bin --lang $lang\""*) cmd="$bin --lang=$lang" ;;
+    *) cmd="$bin --lang $lang" ;;
+  esac
 
   if [ -z "${want:-}" ]; then
     want="id=\"snippets\" kind=\"tui\" title=\"Snippets\" icon=\"file\" command=\"$cmd\" mobile=\"false\""
-    say "adding details-view"
   else
     # Never take over a details panel that belongs to another tool.
     case "$want" in
@@ -220,11 +238,11 @@ if [ "$do_config" = 1 ]; then
         want="id=\"snippets\" kind=\"tui\" title=\"Snippets\" icon=\"file\" command=\"$cmd\" mobile=\"false\""
         ;;
     esac
-    say "updating details-view"
   fi
+
+  before=$(views)
   otty_config set details-view "$want" >/dev/null
   say "details-view = $want"
-
   if [ -z "$config_file" ]; then
     otty config reload >/dev/null 2>&1 || warn "could not ask Otty to reload its config"
   fi
@@ -237,29 +255,31 @@ if [ "$do_config" = 1 ]; then
   fi
 fi
 
-# ---- stop the running view ----------------------------------------------------
-#
-# Otty keeps a running view as it is when the config is reloaded, so the old
-# build would stay on screen until the panel is reopened anyway.
+# ---- refresh the panel --------------------------------------------------------
 
-stopped=""
-if [ "$restart" = 1 ] && [ -x "$bin" ]; then
-  pids=$(ps -axo pid=,command= | awk -v b="$bin" '$2 == b {print $1}')
-  if [ -n "$pids" ]; then
-    # shellcheck disable=SC2086
-    kill $pids 2>/dev/null || true
-    i=0
-    while [ $i -lt 20 ]; do
-      pids=$(ps -axo pid=,command= | awk -v b="$bin" '$2 == b {print $1}')
-      [ -z "$pids" ] && break
-      sleep 0.1
-      i=$((i + 1))
+if [ "$restart" = 1 ] && [ "$do_config" = 1 ] && [ -z "$config_file" ] && [ -n "${before:-}" ]; then
+  # Wait for Otty to start the new command, then retire whatever is left of the
+  # old one. If nothing new appears the panel is closed or busy: leave the old
+  # process alone rather than blank a panel that is on screen.
+  fresh=""
+  i=0
+  while [ $i -lt 50 ]; do
+    for p in $(views); do
+      case " $(echo $before) " in *" $p "*) ;; *) fresh=$p ;; esac
     done
-    # shellcheck disable=SC2086
-    [ -z "$pids" ] || kill -9 $pids 2>/dev/null || true
-    stopped="The old view was stopped. "
+    [ -n "$fresh" ] && break
+    sleep 0.1
+    i=$((i + 1))
+  done
+  if [ -n "$fresh" ]; then
+    for p in $before; do kill "$p" 2>/dev/null || true; done
+    say ""
+    say "The details panel was restarted on the new build."
+  else
+    say ""
+    say "Otty did not restart the view; press ⌘⇧R twice (close, then open) to load it."
   fi
+elif [ "$do_config" = 1 ] && [ -z "$config_file" ]; then
+  say ""
+  say "Open the details panel with ⌘⇧R; it will start the new build."
 fi
-
-say ""
-say "${stopped}Open the details panel with ⌘⇧R (press it twice: once to close, once to open)."
