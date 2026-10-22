@@ -14,6 +14,9 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.w, m.h = msg.Width, msg.Height
 		m.fit()
+		if m.form != nil {
+			m.formLayout() // the box and the body window follow the terminal
+		}
 	case tickMsg:
 		// Pick up snippets added or edited in Otty's own Recipes settings.
 		if m.mode == modeNormal && m.drag == nil && !m.resizing && signature() != m.sig {
@@ -312,7 +315,12 @@ func (m *model) keyForm(k tea.KeyMsg) tea.Cmd {
 			return nil
 		}
 	}
-	return f.update(k)
+	cmd := f.update(k)
+	if k.String() != "esc" {
+		// Every edit can add or remove rows; keep the caret in view.
+		m.formFollow()
+	}
+	return cmd
 }
 
 func (m *model) saveForm() {
@@ -382,13 +390,29 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 	case modeContext:
 		return m.mouseCtx(e)
 	case modeForm:
-		// Like the group dialog: a click inside picks the field under it, a
-		// click outside cancels the form.
-		if press {
+		// Like the group dialog: a click inside picks the field under it (in
+		// the body, also the character), a click outside cancels the form. The
+		// wheel only scrolls the body, when the pointer is over it.
+		if !press {
+			return nil
+		}
+		switch e.Button {
+		case tea.MouseButtonWheelUp, tea.MouseButtonWheelDown:
+			x, y, w, _ := m.formBox()
+			inBody := e.X > x && e.X < x+w && e.Y >= y+formTextTop && e.Y < y+formTextTop+m.form.rows
+			if inBody {
+				d := 3
+				if e.Button == tea.MouseButtonWheelUp {
+					d = -3
+				}
+				m.form.scroll += d
+				m.form.clampScroll()
+			}
+		default:
 			if m.clickOutsideForm(e) {
 				m.form, m.formMsg, m.mode = nil, "", modeNormal
 			} else if left {
-				m.form.setFocusAt(e.Y - m.formBoxTop())
+				m.clickForm(e)
 			}
 		}
 		return nil
@@ -472,12 +496,6 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 func (m *model) ctxClickOutsideDialog(e tea.MouseMsg) bool {
 	x, y, w := m.dialogBox()
 	return e.X < x || e.X >= x+w || e.Y < y || e.Y >= y+m.dialogHeight()
-}
-
-// formBoxTop is the screen row of the form dialog's top border.
-func (m *model) formBoxTop() int {
-	_, y, _, _ := m.formBox()
-	return y
 }
 
 // clickOutsideForm reports whether e lands outside the snippet form.

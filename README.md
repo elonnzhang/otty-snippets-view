@@ -84,7 +84,7 @@ From a cleared selection, `↓` selects the first row and `↑` the last one.
 
 New and rename group, and new and edit snippet, open a box in the middle of the screen; the list stays visible around it. A click outside the box cancels, and a name that is rejected keeps the box open with the reason inside it.
 
-Form: `Tab` / `⇧Tab` switches fields, `⌃S` saves, `Esc` cancels. Alias is required and cannot contain spaces.
+Form: `Tab` / `⇧Tab` switches fields, `⌃S` saves, `Esc` cancels. Alias is required and cannot contain spaces. A long body grows the box to at most two thirds of the screen and scrolls inside it beyond that (`↑`/`↓` mark what is out of view, the wheel scrolls it), and typing keeps the caret in view. Click anywhere in a field — name, alias or the body — to put the caret on that character and keep typing there.
 
 Placeholders in a snippet's text: `{{clipboard}}` `{{date}}` `{{time}}`. `{{cursor}}` only works in Otty's own expander and is removed here.
 

@@ -263,7 +263,7 @@ func (m *model) confirmText() string {
 // it: the list stays visible around it, and the box sits where the eye is.
 func (m *model) drawForm(lines []string) {
 	f := m.form
-	x, y, w, h := m.formBox()
+	x, y, w, _ := m.formBox()
 	inner := w - 2
 
 	title := tr("form.edit")
@@ -281,13 +281,30 @@ func (m *model) drawForm(lines []string) {
 		text = stLabel.Render(text)
 	}
 	cells = append(cells, boxCell(text+" "+stDim.Render(tr("form.tiphint")), inner))
-	body := strings.Split(f.text.View(), "\n")
-	for i := 0; i < h-formTextTop-1; i++ {
-		line := ""
-		if i < len(body) {
-			line = body[i]
+	// Body: only the window the box shows; the cursor block goes on the cell
+	// the cursor is at. The ↑/↓ marks say the text goes on above or below.
+	body := make([]string, f.rows)
+	for i := range body {
+		if j := f.scroll + i; j >= 0 && j < len(f.lines) {
+			body[i] = f.lines[j]
 		}
-		cells = append(cells, stLabel.Render("│")+fitw(strings.Repeat(" ", dialogPad)+line, inner)+stLabel.Render("│"))
+	}
+	if row, cell, ch := f.cursorSpot(); row >= f.scroll && row < f.scroll+f.rows {
+		i := row - f.scroll
+		body[i] = ansi.Truncate(body[i], cell, "") + stCursor.Render(ch) +
+			ansi.TruncateLeft(fitw(body[i], max(cell+1, ansi.StringWidth(body[i]))), cell+1, "")
+	}
+	more := f.scroll+f.rows < f.total()
+	for i := range body {
+		mark := " "
+		switch {
+		case i == 0 && f.scroll > 0:
+			mark = stDim.Render("↑")
+		case i == f.rows-1 && more:
+			mark = stDim.Render("↓")
+		}
+		// 1 cell goes to the scroll mark, the rest to text and padding.
+		cells = append(cells, stLabel.Render("│")+fitw(strings.Repeat(" ", dialogPad)+body[i], inner-1)+mark+stLabel.Render("│"))
 	}
 	if m.formMsg != "" {
 		// The reason sits on the last body line, inside the box, so it cannot

@@ -24,6 +24,7 @@ var (
 	stTabOff  = lipgloss.NewStyle().Faint(true)
 	stKey     = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("4"))
 	stHandle  = lipgloss.NewStyle().Foreground(lipgloss.Color("4"))
+	stCursor  = lipgloss.NewStyle().Reverse(true)
 )
 
 // fitw truncates s (which may contain ANSI) to w cells and pads it to exactly w.
