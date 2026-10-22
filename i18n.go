@@ -132,13 +132,15 @@ var dict = map[string][2]string{
 	"form.notext":    {"✗ text can't be empty", "✗ 内容不能为空"},
 	"form.aliasused": {`✗ alias already used by "%s"`, "✗ alias 已被「%s」占用"},
 
-	"send.nopane": {"✗ no terminal pane to write to", "✗ 没有可写入的终端 pane"},
-	"send.denied": {"✗ rejected (check ipc-allow-send-keys)", "✗ 被拒绝 (检查 ipc-allow-send-keys)"},
-	"send.failed": {"✗ send failed: %s", "✗ 发送失败: %s"},
-	"send.ran":    {"✓ ran", "✓ 已执行"},
-	"send.filled": {"✓ filled in", "✓ 已填入"},
-	"copy.failed": {"✗ copy failed: %v", "✗ 复制失败: %v"},
-	"copy.done":   {"✓ copied", "✓ 已复制"},
+	"send.nopane":    {"✗ no terminal pane to write to", "✗ 没有可写入的终端 pane"},
+	"send.denied":    {"✗ rejected (check ipc-allow-send-keys)", "✗ 被拒绝 (检查 ipc-allow-send-keys)"},
+	"send.failed":    {"✗ send failed: %s", "✗ 发送失败: %s"},
+	"send.rejected":  {"✗ rejected: %s", "✗ 被拒绝: %s"},
+	"send.sensitive": {"✗ herdr pane %s is an SSH session (check ipc-allow-sensitive-sessions)", "✗ herdr pane %s 是 SSH 会话 (检查 ipc-allow-sensitive-sessions)"},
+	"send.ran":       {"✓ ran", "✓ 已执行"},
+	"send.filled":    {"✓ filled in", "✓ 已填入"},
+	"copy.failed":    {"✗ copy failed: %v", "✗ 复制失败: %v"},
+	"copy.done":      {"✓ copied", "✓ 已复制"},
 }
 
 func tabNames() [2]string { return [2]string{tr("tab.list"), tr("tab.group")} }

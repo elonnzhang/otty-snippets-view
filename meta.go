@@ -332,6 +332,13 @@ func sendSnippet(s Snippet, run bool) string {
 	if pane == "" {
 		return tr("send.nopane")
 	}
+	if c, ok := herdrClientIn(pane); ok {
+		// Herdr types the keys, so Otty's own send switch is checked here.
+		if !ottyFlag("ipc-allow-send-keys") {
+			return tr("send.denied")
+		}
+		return sendSnippetViaHerdrClient(c, s, run)
+	}
 	args := []string{"pane", "send-text", "--pane", pane, "--stdin", "--no-escape", "-q"}
 	if run {
 		args = append(args, "--submit=now")
@@ -344,7 +351,12 @@ func sendSnippet(s Snippet, run bool) string {
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
 		if ee, ok := err.(*exec.ExitError); ok && ee.ExitCode() == 7 {
-			return tr("send.denied")
+			// Otty says why (send-keys off, SSH session, ...); show that, not a guess.
+			reason := strings.TrimPrefix(strings.TrimSpace(stderr.String()), "error: ")
+			if reason == "" || strings.Contains(reason, "ipc-allow-send-keys") {
+				return tr("send.denied")
+			}
+			return fmt.Sprintf(tr("send.rejected"), reason)
 		}
 		return fmt.Sprintf(tr("send.failed"), firstNonEmpty(strings.TrimSpace(stderr.String()), err.Error()))
 	}

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -101,7 +102,7 @@ func herdrCurrentPane() string {
 			PaneID string `json:"pane_id"`
 		} `json:"pane"`
 	}
-	if herdrJSON(&r, "pane", "current", "--json") != nil {
+	if herdrJSON(&r, "pane", "current") != nil {
 		return ""
 	}
 	return r.Pane.PaneID
@@ -124,4 +125,137 @@ func sendSnippetHerdr(s Snippet, run bool) string {
 		return fmt.Sprintf(tr("send.failed"), err)
 	}
 	return tr("send.ran")
+}
+
+// ---- Otty pane hosting a Herdr client ----------------------------------------
+//
+// When the focused Otty pane runs a Herdr client, Otty refuses to type into it:
+// the client keeps its remote-machine ssh bridges in the pane's foreground, so
+// Otty sees an SSH session. The keys would only reach Herdr's focused pane
+// anyway, so send there through Herdr instead, with Otty's rule kept: a target
+// that is itself an SSH session needs ipc-allow-sensitive-sessions.
+
+// herdrClient is a Herdr client process found in an Otty pane.
+type herdrClient struct {
+	session string // --session of the client, "" for the default one
+	socket  string // HERDR_SOCKET_PATH in the client's environment, if any
+}
+
+// herdrClientIn finds the Herdr client in the foreground of the Otty pane.
+func herdrClientIn(ottyPane string) (herdrClient, bool) {
+	out, err := exec.Command("ps", "-axo", "pid=,stat=,args=").Output()
+	if err != nil {
+		return herdrClient{}, false
+	}
+	want := "OTTY_PANE_ID=" + strings.TrimPrefix(ottyPane, "p_")
+	for _, line := range strings.Split(string(out), "\n") {
+		f := strings.Fields(line)
+		if len(f) < 3 || !strings.Contains(f[1], "+") || filepath.Base(f[2]) != "herdr" || isHerdrServer(f[3:]) {
+			continue
+		}
+		env, err := exec.Command("ps", "eww", "-o", "command=", "-p", f[0]).Output()
+		if err != nil {
+			continue
+		}
+		if c, ok := parseHerdrClient(string(env), want); ok {
+			return c, true
+		}
+	}
+	return herdrClient{}, false
+}
+
+func isHerdrServer(args []string) bool {
+	return len(args) > 0 && (args[0] == "server" || args[0] == "remote-client-bridge")
+}
+
+// parseHerdrClient reads `ps eww` output of a herdr process: argv, then env.
+func parseHerdrClient(cmdline, wantPane string) (herdrClient, bool) {
+	var c herdrClient
+	match := false
+	f := strings.Fields(cmdline)
+	for i, tok := range f {
+		switch {
+		case tok == wantPane:
+			match = true
+		case tok == "--session" && i+1 < len(f):
+			c.session = f[i+1]
+		case strings.HasPrefix(tok, "--session="):
+			c.session = strings.TrimPrefix(tok, "--session=")
+		case strings.HasPrefix(tok, "HERDR_SOCKET_PATH="):
+			c.socket = strings.TrimPrefix(tok, "HERDR_SOCKET_PATH=")
+		}
+	}
+	return c, match
+}
+
+// cmd runs the herdr CLI against the session this client is attached to.
+func (c herdrClient) cmd(args ...string) *exec.Cmd {
+	if c.session != "" {
+		args = append([]string{"--session", c.session}, args...)
+	}
+	cmd := exec.Command(herdrBin(), args...)
+	if c.socket != "" {
+		cmd.Env = append(os.Environ(), "HERDR_SOCKET_PATH="+c.socket)
+	}
+	return cmd
+}
+
+func (c herdrClient) json(out any, args ...string) error {
+	raw, err := c.cmd(args...).Output()
+	if err != nil {
+		return err
+	}
+	var env struct{ Result json.RawMessage }
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return err
+	}
+	return json.Unmarshal(env.Result, out)
+}
+
+// sensitiveProcs are foreground programs Otty treats as remote sessions.
+var sensitiveProcs = map[string]bool{"ssh": true, "mosh": true, "mosh-client": true, "autossh": true, "et": true, "telnet": true}
+
+// sendSnippetViaHerdrClient types the snippet into Herdr's focused pane.
+func sendSnippetViaHerdrClient(c herdrClient, s Snippet, run bool) string {
+	var cur struct {
+		Pane struct {
+			PaneID string `json:"pane_id"`
+		} `json:"pane"`
+	}
+	if err := c.json(&cur, "pane", "current"); err != nil || cur.Pane.PaneID == "" {
+		return tr("send.nopane")
+	}
+	pane := cur.Pane.PaneID
+	var pi struct {
+		ProcessInfo struct {
+			Foreground []struct {
+				Name string `json:"name"`
+			} `json:"foreground_processes"`
+		} `json:"process_info"`
+	}
+	if err := c.json(&pi, "pane", "process-info", "--pane", pane); err != nil {
+		// Unknown foreground: fail closed rather than risk typing into a remote shell.
+		return fmt.Sprintf(tr("send.failed"), strings.TrimSpace(err.Error()))
+	}
+	for _, p := range pi.ProcessInfo.Foreground {
+		if sensitiveProcs[filepath.Base(p.Name)] && !ottyFlag("ipc-allow-sensitive-sessions") {
+			return fmt.Sprintf(tr("send.sensitive"), pane)
+		}
+	}
+	if err := c.cmd("pane", "send-text", pane, expand(s.Text)).Run(); err != nil {
+		return fmt.Sprintf(tr("send.failed"), strings.TrimSpace(err.Error()))
+	}
+	if !run {
+		return tr("send.filled")
+	}
+	if err := c.cmd("pane", "send-keys", pane, "enter").Run(); err != nil {
+		return fmt.Sprintf(tr("send.failed"), err)
+	}
+	return tr("send.ran")
+}
+
+// ottyFlag reads a boolean Otty setting; anything but "true" counts as off.
+func ottyFlag(key string) bool {
+	out, err := exec.Command(ottyCLI(), "config", "get", key).Output()
+	return err == nil && strings.TrimSpace(string(out)) == "true"
 }
