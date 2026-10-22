@@ -9,7 +9,7 @@ inside an Otty pane, with OTTY_PANE_ID set; if it is empty, stop and say so.
 Run the installer from the project's default branch, then check what it did:
 
 1. Install
-   curl -fsSL https://raw.githubusercontent.com/elonizzhang/otty-snippets-view/main/install.sh | sh
+   curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/install.sh | sh
 
    It downloads the latest release, places the binary in ~/.config/otty/views/otty-snippets-view/,
    writes `details-view` with `otty config set`, reloads the config and stops any old view.
