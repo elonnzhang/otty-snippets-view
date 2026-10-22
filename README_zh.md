@@ -12,7 +12,7 @@ Otty 详情面板里的一个视图。用来管理 Otty 的文本 snippet（`~/.
 curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/install.sh | sh
 ```
 
-脚本会把二进制放到 `~/.config/otty/views/otty-snippets-view/`，把 `details-view` 写进 `~/.config/otty/config.toml`（保留原来的 `--lang`），reload 配置，并停掉正在运行的旧视图，下次按 ⌘⇧R 打开就是新版。旧二进制留作 `.bak`，装上的 tag 记在 `.version` 里；如果已经是这个版本就直接跳过。它不会替你打开 `ipc-allow-send-keys`，只在你没开时提醒一句；遇到属于别的工具的 `details-view` 会拒绝，除非加 `--force`。
+脚本会把二进制放到 `~/.config/otty/views/otty-snippets-view/`，把 `details-view` 写进 `~/.config/otty/config.toml`（保留原来的 `--lang`），reload 配置，并停掉正在运行的旧视图，下次按 ⌘⇧R 打开就是新版。旧二进制留作 `.bak`，装上的 tag 记在 `.version` 里；如果已经是这个版本就直接跳过。它不会替你打开 `ipc-allow-send-keys`，只在你没开时提醒一句；遇到属于别的工具的 `details-view` 会拒绝，除非用 `FORCE=1` 启动脚本。
 
 | 参数 | 说明 |
 | --- | --- |
@@ -20,7 +20,7 @@ curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/
 | `--dir <path>` | 安装目录，默认 `~/.config/otty/views/otty-snippets-view` |
 | `--version <tag>` | 装指定 release，而不是最新 |
 | `--from <binary>` | 装本地构建，不下载 |
-| `--force` | 同版本也重装；或强行替换别的工具的 `details-view` |
+| `--force` | 同版本也重装（管道方式用 `FORCE=1 sh`） |
 | `--no-config` | 只放二进制，不动 Otty 配置 |
 | `--no-restart` | 不动正在运行的视图（它会继续用旧版本，直到重开面板） |
 | `--config-file <p>` | 读写指定的配置文件，而不是 Otty 自己的 |

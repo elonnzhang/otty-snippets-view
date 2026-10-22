@@ -12,7 +12,7 @@ One line installs the latest release and registers it as the details-panel view.
 curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/install.sh | sh
 ```
 
-The script puts the binary in `~/.config/otty/views/otty-snippets-view/`, writes `details-view` into `~/.config/otty/config.toml` (keeping an existing `--lang`), reloads the config and stops any running copy, so the next ⌘⇧R opens the new build. It keeps the previous binary as `.bak`, records the installed tag in `.version`, and skips the work when that tag is already the latest. It never turns on `ipc-allow-send-keys` — it only reminds you when that switch is off — and refuses to replace a `details-view` that belongs to another tool unless given `--force`.
+The script puts the binary in `~/.config/otty/views/otty-snippets-view/`, writes `details-view` into `~/.config/otty/config.toml` (keeping an existing `--lang`), reloads the config and stops any running copy, so the next ⌘⇧R opens the new build. It keeps the previous binary as `.bak`, records the installed tag in `.version`, and skips the work when that tag is already the latest. It never turns on `ipc-allow-send-keys` — it only reminds you when that switch is off — and refuses to replace a `details-view` that belongs to another tool unless started with `FORCE=1`.
 
 | Option | Meaning |
 | --- | --- |
@@ -20,7 +20,7 @@ The script puts the binary in `~/.config/otty/views/otty-snippets-view/`, writes
 | `--dir <path>` | install directory (default `~/.config/otty/views/otty-snippets-view`) |
 | `--version <tag>` | a specific release instead of the latest |
 | `--from <binary>` | install a local build instead of downloading |
-| `--force` | reinstall the same tag / replace another tool's `details-view` |
+| `--force` | reinstall the same tag (`FORCE=1 sh` before the installer when piping) |
 | `--no-config` | only place the binary; leave Otty's config alone |
 | `--no-restart` | leave a running view alone (it keeps the old build until reopened) |
 | `--config-file <p>` | read and write this config instead of Otty's own |

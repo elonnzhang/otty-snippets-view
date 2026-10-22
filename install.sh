@@ -7,13 +7,17 @@
 #   sh install.sh --check                    # only report installed vs latest
 #   sh install.sh --from ./otty-snippets-view  # install a local build
 #
+# Variables:
+#   FORCE=1             replace a details-view that belongs to something else
+#                       (the only option that can't follow a pipe), e.g.
+#                       curl -fsSL .../install.sh | FORCE=1 sh
+#
 # Options:
 #   --dir <path>        where the binary goes (default ~/.config/otty/views/otty-snippets-view)
 #   --version <tag>     release tag to install (default: the latest release)
 #   --from <binary>     install this file instead of downloading a release
 #   --check             print the installed and latest tags, then exit
-#   --force             reinstall even when already on that tag, and replace a
-#                       details-view that belongs to something else
+#   --force             reinstall even when already on that tag
 #   --no-config         only install the binary; leave Otty's config alone
 #   --no-restart        don't stop a running view (it keeps the old build until reopened)
 #   --config-file <p>   read/write this config instead of Otty's own (skips reload)
@@ -27,13 +31,17 @@ REPO=elonnzhang/otty-snippets-view
 ASSET=otty-snippets-view.zip
 BIN=otty-snippets-view
 
+# Replace a details-view that belongs to something else. This is the one
+# option that can't be passed after a pipe, where its arguments belong to sh.
+FORCE=${FORCE:-0}
+
 dir="${OTTY_SNIPPETS_DIR:-$HOME/.config/otty/views/otty-snippets-view}"
 tag=""
 from=""
 do_config=1
 restart=1
 config_file=""
-force=0
+force=$FORCE
 check=0
 
 say() { printf '%s\n' "$*"; }
@@ -54,8 +62,7 @@ Otty's details-panel view.
   --version <tag>     release tag to install (default: the latest release)
   --from <binary>     install this file instead of downloading a release
   --check             print the installed and latest tags, then exit
-  --force             reinstall even when already on that tag, and replace a
-                      details-view that belongs to something else
+  --force             reinstall even when already on that tag
   --no-config         only install the binary; leave Otty's config alone
   --no-restart        don't stop a running view
   --config-file <p>   read/write this config instead of Otty's own (skips reload)
@@ -202,7 +209,7 @@ if [ "$do_config" = 1 ]; then
     case "$want" in
       *otty-snippets-view*|*'id="snippets"'*) ;;
       *)
-        [ "$force" = 1 ] || die "details-view belongs to something else; re-run with --force to replace it:
+        [ "$force" = 1 ] || die "details-view belongs to something else; set FORCE=1 at the top of this script to replace it (--force can't come after a pipe):
   $want"
         ;;
     esac
