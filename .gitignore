@@ -1,0 +1,16 @@
+# Build artefacts
+/otty-snippets-view
+/dist/
+*.new
+
+# Local state, not source
+/groups.json
+/groups.json.bad
+/trash/
+
+# macOS
+.DS_Store
+
+# Editor/IDE
+.idea/
+.vscode/
