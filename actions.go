@@ -103,6 +103,8 @@ func (m *model) dropGroup(gid, parent string) {
 
 func (m *model) startPrompt(gid, sid, text string) {
 	m.prompt = newTextInput(text)
+	m.prompt.Width = m.dialogInputWidth()
+	m.promptMsg = ""
 	m.promptGroup, m.promptSnipID, m.promptParent, m.mode = gid, sid, "", modePrompt
 }
 
@@ -115,7 +117,9 @@ func (m *model) startChildPrompt(parent, sid string) {
 func (m *model) commitPrompt() {
 	name := strings.TrimSpace(m.prompt.Value())
 	if !m.meta.nameOK(name, m.promptGroup) {
-		m.say(tr("prompt.bad"))
+		// The dialog stays open with the reason under the input, so the name
+		// can be fixed right where it was typed.
+		m.promptMsg = tr("prompt.bad")
 		return
 	}
 	gid := m.promptGroup

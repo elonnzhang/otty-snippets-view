@@ -5,6 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -96,11 +98,8 @@ func (m *model) hints() []string {
 func (m *model) status() string {
 	switch {
 	case m.mode == modePrompt:
-		label := tr("prompt.new")
-		if m.promptGroup != "" {
-			label = tr("prompt.ren")
-		}
-		return stLabel.Render(label) + m.prompt.View()
+		// The dialog carries the input and its own error line.
+		return ""
 	case m.mode == modeConfirm:
 		return stErr.Render(m.confirmText())
 	case m.msg != "" && time.Now().Before(m.msgUntil):
@@ -113,8 +112,45 @@ func (m *model) status() string {
 	return ""
 }
 
+// drawDialog paints the group-name dialog over the finished screen. Its keys
+// are handled before the view is built, like the right-click menu.
+func (m *model) drawDialog(lines []string) {
+	x, y, w := m.dialogBox()
+	inner := w - 2
+	label := tr("prompt.new")
+	if m.promptGroup != "" {
+		label = tr("prompt.ren")
+	}
+	cells := []string{
+		stLabel.Render("┌" + strings.Repeat("─", inner) + "┐"),
+		boxCell(stBold.Render(label)+m.prompt.View(), inner),
+	}
+	if m.promptMsg != "" {
+		cells = append(cells, boxCell(stErr.Render(m.promptMsg), inner))
+	}
+	cells = append(cells, stLabel.Render("└"+strings.Repeat("─", inner)+"┘"))
+	for i, c := range cells {
+		row := y + i
+		if row < 0 || row >= len(lines) {
+			continue
+		}
+		line := lines[row]
+		lines[row] = ansi.Truncate(line, x, "") + c + ansi.TruncateLeft(line, x+w, "")
+	}
+}
+
+// boxCell draws one inner row of a dialog box: borders on both sides and
+// exactly `inner` cells between them, so the columns line up.
+func boxCell(s string, inner int) string {
+	return stLabel.Render("│") + fitw(strings.Repeat(" ", dialogPad)+s, inner) + stLabel.Render("│")
+}
+
 // hintRow lays hints out in columns: keys on the first row, tips right below.
 func (m *model) hintRow(hs []hint) [2]string {
+	return m.hintRows(hs)
+}
+
+func (m *model) hintRows(hs []hint) [2]string {
 	var keys, tips strings.Builder
 	used := 0
 	for _, h := range hs {
@@ -135,6 +171,70 @@ func (m *model) hintRow(hs []hint) [2]string {
 		used += sep + cw
 	}
 	return [2]string{keys.String(), tips.String()}
+}
+
+// hintSpan is a clickable stretch of the key row: [start, end) columns.
+type hintSpan struct {
+	key  string
+	col  int
+	wid  int
+	hint hint
+}
+
+// hintSpans lists the hints that fit, in the same order and column arithmetic
+// as hintRow, so a click on a key can replay it. Both rows of a hint are the
+// click target, from the keys row down to the bottom line.
+func (m *model) hintSpans() []hintSpan {
+	var out []hintSpan
+	used := 0
+	for _, h := range m.hintSet() {
+		cw := max(ansi.StringWidth(h.key), ansi.StringWidth(h.tip))
+		sep := 0
+		if used > 0 {
+			sep = 2
+		}
+		if used+sep+cw > m.w {
+			break
+		}
+		out = append(out, hintSpan{key: h.key, col: used + sep, wid: cw, hint: h})
+		used += sep + cw
+	}
+	return out
+}
+
+// hintAt returns the hint whose key was clicked at x on the hint rows, if any.
+// Both rows count: the keys sit on the top one and the tips right below it.
+func (m *model) hintAt(x, y int) (hint, bool) {
+	if m.mode == modeForm || m.mode == modePrompt || y < m.h-hintRows || y >= m.h {
+		// Only the list view has clickable hints; dialogs and forms keep
+		// their keys to themselves.
+		return hint{}, false
+	}
+	for _, s := range m.hintSpans() {
+		if x >= s.col && x < s.col+s.wid {
+			return s.hint, true
+		}
+	}
+	return hint{}, false
+}
+
+// clickHint replays the key of a clicked hint, which runs the same action as
+// pressing it.
+func (m *model) clickHint(h hint) tea.Cmd {
+	switch h.key {
+	case "⏎", "⏎/click":
+		return m.onKey(tea.KeyMsg{Type: tea.KeyEnter})
+	case "Tab":
+		return m.onKey(tea.KeyMsg{Type: tea.KeyTab})
+	case "Esc":
+		return m.onKey(tea.KeyMsg{Type: tea.KeyEsc})
+	}
+	if len([]rune(h.key)) != 1 {
+		// "↑↓" and the like name several keys, so there is nothing unambiguous
+		// to replay.
+		return nil
+	}
+	return m.onKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(h.key)})
 }
 
 func (m *model) confirmText() string {
@@ -159,37 +259,57 @@ func (m *model) confirmText() string {
 
 // ---- form -------------------------------------------------------------------
 
-func (m *model) viewForm() string {
+// drawForm paints the snippet form over the finished screen, in the middle of
+// it: the list stays visible around it, and the box sits where the eye is.
+func (m *model) drawForm(lines []string) {
 	f := m.form
+	x, y, w, h := m.formBox()
+	inner := w - 2
+
 	title := tr("form.edit")
 	if f.orig.ID == "" {
 		title = fmt.Sprintf(tr("form.new"), m.meta.groupName(f.gid))
 	}
-	label := func(i int, s string) string {
-		if f.focus == i {
-			return stFocused.Render(s)
+	cells := []string{stLabel.Render("┌" + strings.Repeat("─", inner) + "┐")}
+	cells = append(cells, boxCell(stBold.Render(title), inner))
+	cells = append(cells, m.formField(inner, 0, tr("form.name"), f.name))
+	cells = append(cells, m.formField(inner, 1, tr("form.alias"), f.alias))
+	text := tr("form.text")
+	if f.focus == 2 {
+		text = stFocused.Render(text)
+	} else {
+		text = stLabel.Render(text)
+	}
+	cells = append(cells, boxCell(text+" "+stDim.Render(tr("form.tiphint")), inner))
+	body := strings.Split(f.text.View(), "\n")
+	for i := 0; i < h-formTextTop-1; i++ {
+		line := ""
+		if i < len(body) {
+			line = body[i]
 		}
-		return stLabel.Render(s)
+		cells = append(cells, stLabel.Render("│")+fitw(strings.Repeat(" ", dialogPad)+line, inner)+stLabel.Render("│"))
 	}
-	lines := []string{
-		m.tabBar(),
-		stBold.Render(title),
-		label(0, tr("form.name")) + f.name.View(),
-		label(1, tr("form.alias")) + f.alias.View(),
-		label(2, tr("form.text")) + stDim.Render(tr("form.tiphint")),
+	if m.formMsg != "" {
+		// The reason sits on the last body line, inside the box, so it cannot
+		// be mistaken for a status message.
+		cells[len(cells)-1] = boxCell(stErr.Render(m.formMsg), inner)
 	}
-	lines = append(lines, strings.Split(f.text.View(), "\n")...)
-	for len(lines) < m.h-hintRows {
-		lines = append(lines, "")
+	cells = append(cells, stLabel.Render("└"+strings.Repeat("─", inner)+"┘"))
+
+	for i, c := range cells {
+		row := y + i
+		if row < 0 || row >= len(lines) {
+			continue
+		}
+		lines[row] = ansi.Truncate(lines[row], x, "") + c + ansi.TruncateLeft(lines[row], x+w, "")
 	}
-	lines = lines[:max(0, m.h-hintRows)]
-	if s := m.status(); s != "" && len(lines) > 0 {
-		lines[len(lines)-1] = s
+}
+
+// formField draws one label + input row of the form.
+func (m *model) formField(inner, i int, name string, in textinput.Model) string {
+	st := stLabel
+	if m.form.focus == i {
+		st = stFocused
 	}
-	hs := m.hintRow(m.hintSet())
-	lines = append(lines, hs[0], hs[1])
-	for i := range lines {
-		lines[i] = fitw(lines[i], m.w)
-	}
-	return strings.Join(lines, "\n")
+	return boxCell(st.Render(name)+strings.Repeat(" ", dialogPad)+in.View(), inner)
 }

@@ -88,6 +88,7 @@ type model struct {
 	hover     bool     // terminal reports pointer motion without a button
 
 	prompt       textinput.Model
+	promptMsg    string // why the last name was rejected, shown in the dialog
 	promptGroup  string // group being renamed; "" for a new one
 	promptSnipID string // snippet to move into the new group
 	promptParent string // group the new group goes under
@@ -95,6 +96,8 @@ type model struct {
 	confirmGroup, confirmSnip string
 
 	form *form
+	// formMsg is why saving was refused, shown inside the form dialog.
+	formMsg string
 }
 
 type tickMsg time.Time

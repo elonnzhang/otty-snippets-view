@@ -13,9 +13,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.w, m.h = msg.Width, msg.Height
-		if m.form != nil {
-			m.form.resize(m.w, m.h)
-		}
 		m.fit()
 	case tickMsg:
 		// Pick up snippets added or edited in Otty's own Recipes settings.
@@ -130,13 +127,17 @@ func (m *model) onKey(k tea.KeyMsg) tea.Cmd {
 		if r != nil && m.tab == tabGroup {
 			gid = r.gid
 		}
-		m.form, m.mode = newForm(Snippet{}, gid, m.w, m.h), modeForm
+		m.form, m.mode = newForm(Snippet{}, gid), modeForm
+		m.formMsg = ""
+		m.formLayout()
 	case "e":
 		if s := m.curSnip(); s != nil {
 			if s.Foreign {
 				m.say(tr("foreign"))
 			} else {
-				m.form, m.mode = newForm(*s, "", m.w, m.h), modeForm
+				m.form, m.mode = newForm(*s, ""), modeForm
+				m.formMsg = ""
+				m.formLayout()
 			}
 		} else if named {
 			m.startPrompt(r.gid, "", r.name)
@@ -224,6 +225,10 @@ func (m *model) keyPrompt(k tea.KeyMsg) tea.Cmd {
 	}
 	var cmd tea.Cmd
 	m.prompt, cmd = m.prompt.Update(k)
+	if m.promptMsg != "" {
+		// Typing again is the fix; drop the error line as soon as it changes.
+		m.promptMsg = ""
+	}
 	return cmd
 }
 
@@ -290,7 +295,7 @@ func (m *model) keyForm(k tea.KeyMsg) tea.Cmd {
 	f := m.form
 	switch k.String() {
 	case "esc":
-		m.form, m.mode = nil, modeNormal
+		m.form, m.mode, m.formMsg = nil, modeNormal, ""
 		return nil
 	case "tab":
 		f.setFocus(f.focus + 1)
@@ -313,20 +318,22 @@ func (m *model) keyForm(k tea.KeyMsg) tea.Cmd {
 func (m *model) saveForm() {
 	s, problem := m.form.result(m.snips)
 	if problem != "" {
-		m.say(problem)
+		// The dialog stays open with the reason inside it, like the group
+		// name dialog.
+		m.formMsg = problem
 		return
 	}
 	isNew := s.ID == ""
 	id, err := saveSnippet(s)
 	if err != nil {
-		m.say(fmt.Sprintf(tr("save.failed"), err))
+		m.formMsg = fmt.Sprintf(tr("save.failed"), err)
 		return
 	}
 	if _, _, prefixed := splitPrefix(s.Name); isNew && m.form.gid != "" && !prefixed {
 		m.meta.move(id, m.form.gid)
 		m.persist()
 	}
-	m.form, m.mode = nil, modeNormal
+	m.form, m.mode, m.formMsg = nil, modeNormal, ""
 	m.reload()
 	m.rebuild("s:" + id)
 	if isNew {
@@ -375,12 +382,33 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 	case modeContext:
 		return m.mouseCtx(e)
 	case modeForm:
-		if press && left {
-			m.form.focusAt(e.Y)
+		// Like the group dialog: a click inside picks the field under it, a
+		// click outside cancels the form.
+		if press {
+			if m.clickOutsideForm(e) {
+				m.form, m.formMsg, m.mode = nil, "", modeNormal
+			} else if left {
+				m.form.setFocusAt(e.Y - m.formBoxTop())
+			}
 		}
 		return nil
-	case modePrompt, modeConfirm, modeSearch:
+	case modePrompt:
+		// A click outside the box cancels, like Esc; inside, the input keeps
+		// its cursor where it was.
+		if press && m.ctxClickOutsideDialog(e) {
+			m.mode = modeNormal
+			m.promptMsg = ""
+		}
 		return nil
+	case modeConfirm, modeSearch:
+		return nil
+	}
+
+	// The hint rows are a second toolbar: clicking a key runs it.
+	if press && left {
+		if h, ok := m.hintAt(e.X, e.Y); ok {
+			return m.clickHint(h)
+		}
 	}
 
 	inDetail := l.detH > 0 && e.Y >= l.detTop && e.Y < l.detTop+l.detH
@@ -438,6 +466,24 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 		m.release(idx, inList)
 	}
 	return nil
+}
+
+// ctxClickOutsideDialog reports whether e lands outside the group-name box.
+func (m *model) ctxClickOutsideDialog(e tea.MouseMsg) bool {
+	x, y, w := m.dialogBox()
+	return e.X < x || e.X >= x+w || e.Y < y || e.Y >= y+m.dialogHeight()
+}
+
+// formBoxTop is the screen row of the form dialog's top border.
+func (m *model) formBoxTop() int {
+	_, y, _, _ := m.formBox()
+	return y
+}
+
+// clickOutsideForm reports whether e lands outside the snippet form.
+func (m *model) clickOutsideForm(e tea.MouseMsg) bool {
+	x, y, w, h := m.formBox()
+	return e.X < x || e.X >= x+w || e.Y < y || e.Y >= y+h
 }
 
 func (m *model) clearSel() {

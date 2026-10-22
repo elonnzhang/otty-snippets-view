@@ -95,9 +95,6 @@ func (m *model) View() string {
 	if m.w == 0 || m.h == 0 {
 		return ""
 	}
-	if m.mode == modeForm {
-		return m.viewForm()
-	}
 	l := m.layout()
 	lines := make([]string, 0, m.h)
 	lines = append(lines, m.tabBar())
@@ -126,6 +123,12 @@ func (m *model) View() string {
 	}
 	if m.mode == modeContext {
 		m.drawCtx(lines)
+	}
+	if m.mode == modePrompt {
+		m.drawDialog(lines)
+	}
+	if m.mode == modeForm {
+		m.drawForm(lines)
 	}
 	return strings.Join(lines, "\n")
 }
