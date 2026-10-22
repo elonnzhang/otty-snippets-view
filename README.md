@@ -19,7 +19,7 @@ The script puts the binary in `~/.config/otty/views/otty-snippets-view/`, writes
 | `--check` | print installed and latest tags, then stop |
 | `--dir <path>` | install directory (default `~/.config/otty/views/otty-snippets-view`) |
 | `--version <tag>` | a specific release instead of the latest |
-| `--from <binary>` | install a local build instead of downloading |
+| `--from <binary>` | install a local build instead of downloading; `--from dev` builds the checkout |
 | `--force` | reinstall the same tag (`FORCE=1 sh` before the installer when piping) |
 | `--no-config` | only place the binary; leave Otty's config alone |
 | `--no-restart` | leave a running view alone (it keeps the old build until reopened) |
@@ -29,9 +29,9 @@ Options after a pipe go through `sh -s --`, e.g. `curl -fsSL …/install.sh | sh
 
 It reads the latest tag from the `releases/latest` redirect, so it needs neither `gh` nor a GitHub token and does not hit the API rate limit.
 
-From a checkout, `./release.sh` is the development loop: vet, test, build a universal binary into `dist/` and install it (`--fast` skips vet/test, `--zip` also builds the release zip). The Herdr plugin needs nothing extra — its `run.sh` rebuilds the binary it uses whenever a `.go` file is newer.
+From a checkout, `./release.sh` is the development loop: vet, test, then build and install the working tree (`sh install.sh --from dev`); `--fast` skips vet/test and `--zip` also builds the release zip. `sh install.sh --from dev` on its own is the same loop without the checks, and works with the panel open — the installed command changes on every run, which is what makes Otty start the new build. The Herdr plugin needs nothing extra — its `run.sh` rebuilds the binary it uses whenever a `.go` file is newer.
 
-`details-view` must be quoted `key="value"` pairs; JSON is rejected. Otty does not restart a running view when the config is reloaded, which is why the script stops the old process: reopen the panel (⌘⇧R twice) to run the new build.
+`details-view` must be quoted `key="value"` pairs; JSON is rejected. Otty does not restart a running view when the config is reloaded, which is why the script rewrites the command and stops the old process: with the panel open it switches to the new build, otherwise reopen the panel (⌘⇧R twice).
 
 Sending a snippet to a pane requires `ipc-allow-send-keys = true` in the config. Without it, run/fill fails with "rejected (check ipc-allow-send-keys)".
 

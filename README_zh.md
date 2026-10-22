@@ -19,7 +19,7 @@ curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/
 | `--check` | 只打印已装版本和最新版本 |
 | `--dir <path>` | 安装目录，默认 `~/.config/otty/views/otty-snippets-view` |
 | `--version <tag>` | 装指定 release，而不是最新 |
-| `--from <binary>` | 装本地构建，不下载 |
+| `--from <binary>` | 装本地构建，不下载；`--from dev` 直接构建当前源码目录 |
 | `--force` | 同版本也重装（管道方式用 `FORCE=1 sh`） |
 | `--no-config` | 只放二进制，不动 Otty 配置 |
 | `--no-restart` | 不动正在运行的视图（它会继续用旧版本，直到重开面板） |
@@ -29,9 +29,9 @@ curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/
 
 最新 tag 从 `releases/latest` 的跳转地址里取，所以既不需要 `gh` 也不需要 GitHub token，也不会撞 API 限流。
 
-在源码目录里用 `./release.sh` 走开发流程：vet、测试、构建通用二进制到 `dist/`，再装上（`--fast` 跳过 vet/测试，`--zip` 顺带打 release 用的 zip）。Herdr 插件不用管，它的 `run.sh` 发现有更新的 `.go` 文件时会自己重建。
+在源码目录里用 `./release.sh` 走开发流程：vet、测试，然后构建并安装当前工作区（即 `sh install.sh --from dev`）；`--fast` 跳过 vet/测试，`--zip` 顺带打 release 用的 zip。单独跑 `sh install.sh --from dev` 就是去掉这两项检查的同一条路，而且面板开着也能用——每次安装的 command 都会变，Otty 因此会启动新构建。Herdr 插件不用管，它的 `run.sh` 发现有更新的 `.go` 文件时会自己重建。
 
-Otty 重载配置不会重启正在运行的视图，所以脚本会主动停掉旧进程：重开面板（按两次 ⌘⇧R）即可用上新版。
+Otty 重载配置不会重启正在运行的视图，所以脚本每次都会改写 command 并停掉旧进程：面板开着时会直接换成新构建，否则重开面板（按两次 ⌘⇧R）即可用上。
 
 ## 参数
 

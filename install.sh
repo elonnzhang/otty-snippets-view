@@ -5,6 +5,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/install.sh | sh
 #   curl -fsSL .../install.sh | sh -s -- --version v1.1.0
 #   sh install.sh --check                    # only report installed vs latest
+#   sh install.sh --from dev                 # build this checkout, install, refresh
 #   sh install.sh --from ./otty-snippets-view  # install a local build
 #
 # Variables:
@@ -15,7 +16,8 @@
 # Options:
 #   --dir <path>        where the binary goes (default ~/.config/otty/views/otty-snippets-view)
 #   --version <tag>     release tag to install (default: the latest release)
-#   --from <binary>     install this file instead of downloading a release
+#   --from <binary>     install this file instead of downloading a release;
+#                       --from dev builds the checkout the script sits in
 #   --check             print the installed and latest tags, then exit
 #   --force             reinstall even when already on that tag
 #   --no-config         only install the binary; leave Otty's config alone
@@ -56,11 +58,13 @@ Otty's details-panel view.
   curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/install.sh | sh
   curl -fsSL .../install.sh | sh -s -- --version v1.1.0
   sh install.sh --check
+  sh install.sh --from dev
   sh install.sh --from ./otty-snippets-view
 
   --dir <path>        where the binary goes (default ~/.config/otty/views/otty-snippets-view)
   --version <tag>     release tag to install (default: the latest release)
-  --from <binary>     install this file instead of downloading a release
+  --from <binary>     install this file instead of downloading a release;
+                      --from dev builds the checkout the script sits in
   --check             print the installed and latest tags, then exit
   --force             reinstall even when already on that tag
   --no-config         only install the binary; leave Otty's config alone
@@ -89,6 +93,18 @@ done
 case "$dir" in /*) ;; *) die "--dir must be absolute: $dir" ;; esac
 bin="$dir/$BIN"
 installed=$(cat "$dir/.version" 2>/dev/null || echo "")
+
+# --from dev builds the checkout this script sits in. When piped, sh sets $0 to
+# "sh", so fall back to the working directory.
+src_dir=""
+if [ "$from" = dev ]; then
+  command -v go >/dev/null 2>&1 || die "--from dev needs go on PATH"
+  case "$0" in
+    */*) src_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd) ;;
+    *) src_dir=$PWD ;;
+  esac
+  [ -f "$src_dir/go.mod" ] || die "no go.mod in $src_dir; --from dev builds the checkout, so run it from one or pass a binary path"
+fi
 
 if [ "$do_config" = 1 ]; then
   command -v otty >/dev/null 2>&1 || die "otty is not on PATH; re-run with --no-config to install the binary only"
@@ -135,10 +151,18 @@ trap 'rm -rf "$tmp"' EXIT INT TERM
 src_bin=""
 if [ "$skip" = 1 ]; then
   :
-elif [ -n "$from" ]; then
+elif [ -n "$from" ] && [ "$from" != dev ]; then
   [ -f "$from" ] || die "no such file: $from"
   src_bin=$from
   [ -n "$tag" ] || tag=local
+elif [ "$from" = dev ]; then
+  # Local build: the host architecture only (no lipo round-trip), and a tag
+  # that names the checkout so .version says where the binary came from.
+  say "building $src_dir"
+  ( cd "$src_dir" && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o "$tmp/$BIN" . ) \
+    || die "go build failed"
+  src_bin="$tmp/$BIN"
+  [ -n "$tag" ] || tag="dev-$(cd "$src_dir" && git rev-parse --short HEAD 2>/dev/null || echo local)"
 else
   url="https://github.com/$REPO/releases/download/$tag/$ASSET"
   say "downloading $url"
