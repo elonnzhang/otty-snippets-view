@@ -122,7 +122,7 @@ Code map: `store.go` (recipe and metadata files), `meta.go` (grouping rules, tal
 
 ## Share it
 
-`dist/otty-snippets-view.zip` holds a universal (arm64 + x86_64) build. (Releases are not committed to git; build one with the commands under Development, or grab it from a release.) A colleague only needs the binary and one config line:
+Download `otty-snippets-view.zip` from the [latest release](https://github.com/elonnzhang/otty-snippets-view/releases/latest): a universal (arm64 + x86_64) build. It is not committed to git; build your own with the commands under Development. A colleague only needs the binary and one config line:
 
 ```toml
 details-view = 'id="snippets" kind="tui" title="Snippets" icon="file" command="/path/to/otty-snippets-view" mobile="false"'

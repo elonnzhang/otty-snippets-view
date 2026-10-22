@@ -122,7 +122,7 @@ ditto -c -k --keepParent dist/otty-snippets-view dist/otty-snippets-view.zip
 
 ## 分发
 
-`dist/otty-snippets-view.zip` 里是通用版二进制（arm64 + x86_64）。`dist/` 不进 git，按「开发」里的命令自己打，或者从 release 下载。同事只需要这个二进制和一行配置：
+从 [latest release](https://github.com/elonnzhang/otty-snippets-view/releases/latest) 下载 `otty-snippets-view.zip`，里面是通用版二进制（arm64 + x86_64）。`dist/` 不进 git，也可以按「开发」里的命令自己打。同事只需要这个二进制和一行配置：
 
 ```toml
 details-view = 'id="snippets" kind="tui" title="Snippets" icon="file" command="/path/to/otty-snippets-view" mobile="false"'
