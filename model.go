@@ -29,6 +29,7 @@ const (
 
 type row struct {
 	group  bool
+	depth  int    // nesting level in the group tree
 	gid    string // group id; "" = ungrouped
 	name   string // group name (header rows)
 	count  int
@@ -44,13 +45,14 @@ func (r row) key() string {
 }
 
 type drag struct {
-	sid, name string
-	from      int
-	hover     int // row index under the pointer, -1 if none
-	active    bool
+	sid, gid string // gid set when a group is dragged
+	name     string
+	from     int
+	hover    int // row index under the pointer, -1 if none
+	active   bool
 }
 
-type menuItem struct{ gid, label string } // gid "+" = new group
+type menuItem struct{ gid, label string } // gid "+" = new group, "-" = no entry
 
 type model struct {
 	meta  *Meta
@@ -75,13 +77,15 @@ type model struct {
 	lastClickID string
 	lastClickAt time.Time
 
-	menuFor   *Snippet
+	menuFor   *Snippet // snippet being moved, nil when moving a group
+	menuGroup string   // group being moved
 	menuItems []menuItem
 	menuSel   int
 
 	prompt       textinput.Model
 	promptGroup  string // group being renamed; "" for a new one
 	promptSnipID string // snippet to move into the new group
+	promptParent string // group the new group goes under
 
 	confirmGroup, confirmSnip string
 
@@ -177,23 +181,38 @@ func (m *model) rebuild(keep string) {
 			gid := m.meta.groupOf(s.ID)
 			buckets[gid] = append(buckets[gid], s)
 		}
-		add := func(gid, name string, collapsed bool) {
-			items := buckets[gid]
-			if q != "" && len(items) == 0 {
-				return
+		// Walking by children, not list order, keeps a parent above its children
+		// even when the stored order has drifted.
+		var walk func(parent string, depth int)
+		walk = func(parent string, depth int) {
+			for _, g := range m.meta.children(parent) {
+				items, hasKids := buckets[g.ID], len(m.meta.children(g.ID)) > 0
+				if q != "" && len(items) == 0 && !hasKids {
+					continue
+				}
+				folded := g.Collapsed && q == ""
+				rows = append(rows, row{group: true, depth: depth, gid: g.ID, name: g.Name,
+					count: len(items), folded: folded})
+				if folded {
+					continue
+				}
+				for _, s := range items {
+					rows = append(rows, row{depth: depth + 1, gid: g.ID, snip: s})
+				}
+				walk(g.ID, depth+1)
 			}
-			folded := collapsed && q == ""
-			rows = append(rows, row{group: true, gid: gid, name: name, count: len(items), folded: folded})
+		}
+		walk("", 0)
+		items := buckets[""]
+		if q == "" || len(items) > 0 {
+			folded := m.foldNone && q == ""
+			rows = append(rows, row{group: true, gid: "", name: ungroupedName(), count: len(items), folded: folded})
 			if !folded {
 				for _, s := range items {
-					rows = append(rows, row{gid: gid, snip: s})
+					rows = append(rows, row{gid: "", snip: s})
 				}
 			}
 		}
-		for _, g := range m.meta.Groups {
-			add(g.ID, g.Name, g.Collapsed)
-		}
-		add("", ungroupedName(), m.foldNone)
 	}
 	m.rows = rows
 

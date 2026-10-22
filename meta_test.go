@@ -99,3 +99,76 @@ func TestLang(t *testing.T) {
 	}
 	lang = "en"
 }
+
+func TestNestedGroups(t *testing.T) {
+	t.Setenv("SNIPPETS_HOME", t.TempDir())
+	m := loadMeta()
+	db := m.add("db")
+	my := m.addUnder("mysql", db)
+	ops := m.add("ops")
+	_ = ops
+
+	if !m.setParent(my, ops) { // mysql under ops
+		t.Fatal("setParent refused a valid move")
+	}
+	if m.find(my).Parent != ops {
+		t.Fatalf("parent = %q, want %q", m.find(my).Parent, ops)
+	}
+	if m.path(my) != "ops / mysql" {
+		t.Fatalf("path = %q", m.path(my))
+	}
+	// Cycles are refused: ops under mysql would loop.
+	if m.setParent(ops, my) || m.find(ops).Parent != "" {
+		t.Fatal("cycle accepted")
+	}
+	if !m.isAncestor(my, ops) || m.isAncestor(ops, my) {
+		t.Fatal("isAncestor wrong")
+	}
+	// Back to the top level.
+	if !m.setParent(my, "") || m.find(my).Parent != "" {
+		t.Fatal("could not move back to top")
+	}
+	// A missing parent is ignored.
+	if m.setParent(db, "nope") {
+		t.Fatal("accepted an unknown parent")
+	}
+
+	// Snippets follow their group's subtree and deleting a parent deletes the children.
+	m.setParent(my, db)
+	snips := []Snippet{{ID: "s1", Name: "[mysql]-q"}}
+	m.resolve(snips)
+	for _, sid := range []string{"s1"} {
+		if m.path(m.groupOf(sid)) != "db / mysql" {
+			t.Fatalf("snippet path = %q", m.path(m.groupOf(sid)))
+		}
+	}
+	if m.descendants(db) != 1 {
+		t.Fatalf("descendants(db) = %d", m.descendants(db))
+	}
+	m.remove(db)
+	if m.find(my) != nil || m.find(db) != nil {
+		t.Fatalf("children survived: %+v", m.Groups)
+	}
+	if m.groupOf("s1") != "" {
+		t.Fatalf("member of a deleted subtree still grouped")
+	}
+}
+
+func TestSiblingShift(t *testing.T) {
+	t.Setenv("SNIPPETS_HOME", t.TempDir())
+	m := loadMeta()
+	a, b := m.add("a"), m.add("b")
+	c := m.addUnder("c", a) // child of a, so a sibling of b only at the top level
+	if !m.shift(b, -1) || m.children("")[0].ID != b || m.children("")[1].ID != a {
+		t.Fatalf("shift up failed: %+v", m.children(""))
+	}
+	if m.shift(b, -1) {
+		t.Fatal("shifted past the first sibling")
+	}
+	if m.shift(c, 1) || m.shift(c, -1) {
+		t.Fatal("only child should not move")
+	}
+	if m.shift(a, 1) {
+		t.Fatal("last sibling shifted down")
+	}
+}

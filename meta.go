@@ -105,15 +105,96 @@ func (m *Meta) nameOK(name, skip string) bool {
 	return true
 }
 
-func (m *Meta) add(name string) string {
+func (m *Meta) add(name string) string { return m.addUnder(name, "") }
+
+func (m *Meta) addUnder(name, parent string) string {
 	gid := strings.ToLower(newID()[:8])
-	m.Groups = append(m.Groups, Group{ID: gid, Name: strings.TrimSpace(name)})
+	m.Groups = append(m.Groups, Group{ID: gid, Name: strings.TrimSpace(name), Parent: parent})
 	return gid
+}
+
+// children returns the groups directly under parent ("" = top level), in list order.
+func (m *Meta) children(parent string) []*Group {
+	var out []*Group
+	for i := range m.Groups {
+		p := m.Groups[i].Parent
+		if m.find(p) == nil {
+			p = "" // a stale parent means top level
+		}
+		if p == parent {
+			out = append(out, &m.Groups[i])
+		}
+	}
+	return out
+}
+
+// treeOrder lists group ids depth-first, parents before their children.
+func (m *Meta) treeOrder(parent string) []string {
+	var out []string
+	for _, g := range m.children(parent) {
+		out = append(out, g.ID)
+		out = append(out, m.treeOrder(g.ID)...)
+	}
+	return out
+}
+
+func (m *Meta) descendants(gid string) int {
+	n := 0
+	for _, g := range m.children(gid) {
+		n += 1 + m.descendants(g.ID)
+	}
+	return n
+}
+
+// isAncestor reports whether a is gid itself or lies above it in the tree.
+// Moving gid under a would then create a cycle.
+func (m *Meta) isAncestor(a, gid string) bool {
+	if gid == "" {
+		return false // the top level is every group's ancestor, not the reverse
+	}
+	for n := m.find(a); n != nil; n = m.find(n.Parent) {
+		if n.ID == gid {
+			return true
+		}
+	}
+	return false
+}
+
+// setParent moves a group under parent ("" = top level). It refuses moves that
+// would create a cycle, and goes nowhere if the parent is unchanged.
+func (m *Meta) setParent(gid, parent string) bool {
+	g := m.find(gid)
+	if g == nil || m.find(parent) == nil && parent != "" || m.isAncestor(parent, gid) {
+		return false
+	}
+	if g.Parent == parent {
+		return false
+	}
+	g.Parent = parent
+	return true
+}
+
+// path is the group's name together with its ancestors, e.g. "db / mysql".
+func (m *Meta) path(gid string) string {
+	var parts []string
+	for gid != "" {
+		g := m.find(gid)
+		if g == nil {
+			break
+		}
+		parts = append([]string{g.Name}, parts...)
+		gid = g.Parent
+	}
+	return strings.Join(parts, " / ")
 }
 
 func (m *Meta) remove(gid string) {
 	// Members would recreate the group from their prefix on the next resolve,
 	// so pin every member that has one to 未分组; the rest simply lose their entry.
+	// Sub-groups are deleted with it, one level at a time.
+	for _, g := range m.children(gid) {
+		m.remove(g.ID)
+	}
 	for sid := range m.prefixed {
 		if m.groupOf(sid) == gid {
 			m.Assign[sid] = noGroup
@@ -157,18 +238,32 @@ func (m *Meta) move(sid, gid string) {
 	}
 }
 
+// shift swaps a group with its previous or next sibling, so ordering is per level.
 func (m *Meta) shift(gid string, d int) bool {
+	g := m.find(gid)
+	if g == nil {
+		return false
+	}
+	// Positions of the siblings in the flat list, in list order.
+	var slots []int
 	for i := range m.Groups {
-		if m.Groups[i].ID == gid {
-			j := i + d
-			if j < 0 || j >= len(m.Groups) {
-				return false
-			}
-			m.Groups[i], m.Groups[j] = m.Groups[j], m.Groups[i]
-			return true
+		if m.Groups[i].Parent == g.Parent || m.find(m.Groups[i].Parent) == nil && g.Parent == "" {
+			slots = append(slots, i)
 		}
 	}
-	return false
+	k := -1
+	for i, idx := range slots {
+		if m.Groups[idx].ID == gid {
+			k = i
+		}
+	}
+	j := k + d
+	if k < 0 || j < 0 || j >= len(slots) {
+		return false
+	}
+	a, b := slots[k], slots[j]
+	m.Groups[a], m.Groups[b] = m.Groups[b], m.Groups[a]
+	return true
 }
 
 // prune drops assignments to snippets that no longer exist.

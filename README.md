@@ -56,7 +56,8 @@ The selected tab and the detail height are saved in `groups.json`.
 | `y` | Copy to the clipboard |
 | `a` | New snippet (in the Groups tab it goes into the current group) |
 | `e` | Edit snippet; on a group, rename it |
-| `m` | Move to a group (menu) |
+| `m` | Move to a group (menu); on a group header, move the group under another |
+| `M` | New sub-group under the selected group |
 | drag | Drag a snippet onto a group (Groups tab) |
 | `d` / `x` / `Delete` | Delete; the file moves to `trash/` |
 | `n` / `r` | New group / rename group |
@@ -76,6 +77,14 @@ Placeholders in a snippet's text: `{{clipboard}}` `{{date}}` `{{time}}`. `{{curs
 - Deleting a group moves its members to Ungrouped and does not recreate the group from their prefixes.
 - Renaming a group keeps its prefix-matched members.
 - Ungrouped is only a display label. You can't create a group with that name in either language.
+
+### Nested groups
+
+- Groups form a tree. Press `M` on a group to create a sub-group under it, or `m` to move it under another group (or back to the top level). In the Groups tab you can also drag one group header onto another.
+- A group can't be moved under itself or one of its own sub-groups.
+- Folding a group hides its sub-groups and their snippets too.
+- `[` / `]` reorder a group among its siblings only.
+- Deleting a group deletes its sub-groups as well; all their snippets move to Ungrouped.
 
 ## Files
 

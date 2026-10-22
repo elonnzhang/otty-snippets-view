@@ -191,6 +191,7 @@ type Group struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
 	Collapsed bool   `json:"collapsed"`
+	Parent    string `json:"parent,omitempty"` // "" = top level
 }
 
 // UIState is what the view remembers between runs.

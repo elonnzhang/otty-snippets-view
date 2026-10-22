@@ -131,7 +131,11 @@ func (m *model) onKey(k tea.KeyMsg) tea.Cmd {
 			m.startPrompt(r.gid, "", r.name)
 		}
 	case "m":
-		m.openMenu()
+		m.openMenu(isG)
+	case "M":
+		if isG && r.gid != "" {
+			m.startChildPrompt(r.gid, "")
+		}
 	case "d", "x", "delete":
 		if named {
 			m.confirmGroup, m.confirmSnip, m.mode = r.gid, "", modeConfirm
@@ -214,11 +218,30 @@ func (m *model) keyMenu(k string) {
 		m.mode = modeNormal
 	case "enter":
 		m.mode = modeNormal
+		if m.menuSel < 0 || m.menuSel >= len(m.menuItems) {
+			return
+		}
 		it := m.menuItems[m.menuSel]
-		if it.gid == "+" {
-			m.startPrompt("", m.menuFor.ID, "")
-		} else {
-			m.drop(m.menuFor.ID, it.gid)
+		subject := ""
+		if m.menuFor != nil {
+			subject = m.menuFor.ID
+		}
+		switch {
+		case it.gid == "+" && m.menuFor != nil:
+			m.startPrompt("", subject, "")
+		case it.gid == "+":
+			m.startChildPrompt(m.menuGroup, "") // the new group is not the parent
+			m.promptParent = ""
+		case m.menuFor != nil:
+			m.drop(subject, it.gid)
+		case it.gid == "-":
+			m.dropGroup(m.menuGroup, "")
+		default:
+			if m.meta.isAncestor(it.gid, m.menuGroup) {
+				m.say(tr("pick.cycle"))
+				return
+			}
+			m.dropGroup(m.menuGroup, it.gid)
 		}
 	}
 }
@@ -230,10 +253,15 @@ func (m *model) keyConfirm(k string) {
 	}
 	if m.confirmGroup != "" {
 		name := m.meta.groupName(m.confirmGroup)
+		kids := m.meta.descendants(m.confirmGroup)
 		m.meta.remove(m.confirmGroup)
 		m.persist()
 		m.rebuild("")
-		m.say(fmt.Sprintf(tr("group.deleted"), name))
+		if kids > 0 {
+			m.say(fmt.Sprintf(tr("group.deleted.tree"), name))
+		} else {
+			m.say(fmt.Sprintf(tr("group.deleted"), name))
+		}
 	} else {
 		m.deleteSnippet(m.confirmSnip)
 	}
@@ -363,8 +391,12 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 		switch e.Button {
 		case tea.MouseButtonLeft:
 			m.pressRow, m.drag = idx, nil
-			if !r.group && m.tab == tabGroup {
-				m.drag = &drag{sid: r.snip.ID, name: r.snip.Name, from: idx, hover: idx}
+			if m.tab == tabGroup {
+				if r.group && r.gid != "" {
+					m.drag = &drag{gid: r.gid, name: r.name, from: idx, hover: idx}
+				} else if !r.group {
+					m.drag = &drag{sid: r.snip.ID, name: r.snip.Name, from: idx, hover: idx}
+				}
 			}
 		case tea.MouseButtonRight:
 			if !r.group {
@@ -399,9 +431,25 @@ func (m *model) release(idx int, inList bool) {
 	d := m.drag
 	m.drag = nil
 	if d != nil && d.active {
-		if d.hover >= 0 && d.hover < len(m.rows) {
-			m.drop(d.sid, m.rows[d.hover].gid)
+		if d.hover < 0 || d.hover >= len(m.rows) {
+			return
 		}
+		h := m.rows[d.hover]
+		if d.gid != "" {
+			// A group dropped on another group becomes its child; on a snippet
+			// or on 未分组 it goes back to the top level.
+			parent := ""
+			if h.group {
+				parent = h.gid
+			}
+			if m.meta.isAncestor(parent, d.gid) {
+				m.say(tr("pick.cycle"))
+				return
+			}
+			m.dropGroup(d.gid, parent)
+			return
+		}
+		m.drop(d.sid, h.gid)
 		return
 	}
 	if !inList || idx != m.pressRow {

@@ -18,6 +18,9 @@ func (m *model) detail(n int) []string {
 	if r.group {
 		out := []string{stBold.Render(r.name) + stDim.Render("  "+fmt.Sprintf(tr("group.count"), r.count))}
 		if r.gid != "" {
+			if p := m.meta.find(r.gid).Parent; p != "" {
+				out = append(out, stDim.Render(fmt.Sprintf(tr("group.parent"), m.meta.path(p))))
+			}
 			out = append(out, stDim.Render(fmt.Sprintf(tr("group.auto"), r.name)))
 		}
 		return out
@@ -56,12 +59,13 @@ func (m *model) hintSet() []hint {
 	if r != nil && r.group {
 		h := []hint{{"⏎", tr("h.fold")}, {"n", tr("h.newg")}}
 		if r.gid != "" {
-			h = append(h, hint{"r", tr("h.rename")}, hint{"d", tr("h.del")}, hint{"[ ]", tr("h.sort")})
+			h = append(h, hint{"r", tr("h.rename")}, hint{"m", tr("h.moveg")}, hint{"d", tr("h.del")}, hint{"[ ]", tr("h.sort")})
 		}
+		h = append(h, hint{"M", tr("h.subg")})
 		return append(h, hint{"Tab", tr("h.tab")}, hint{"/", tr("h.search")})
 	}
 	h := []hint{{"⏎", tr("h.run")}, {"o", tr("h.fill")}, {"y", tr("h.copy")}, {"a", tr("h.new")}, {"e", tr("h.edit")},
-		{"m", tr("h.move")}, {"d", tr("h.delete")}, {"n", tr("h.newg")}}
+		{"m", tr("h.move")}, {"d", tr("h.delete")}}
 	if m.tab == tabGroup {
 		h = append(h, hint{"n", tr("h.newg")})
 	}
@@ -126,6 +130,9 @@ func (m *model) confirmText() string {
 			if m.meta.groupOf(s.ID) == m.confirmGroup {
 				n++
 			}
+		}
+		if kids := m.meta.descendants(m.confirmGroup); kids > 0 {
+			return fmt.Sprintf(tr("group.del.tree"), m.meta.groupName(m.confirmGroup), n, kids)
 		}
 		return fmt.Sprintf(tr("group.del"), m.meta.groupName(m.confirmGroup), n)
 	}

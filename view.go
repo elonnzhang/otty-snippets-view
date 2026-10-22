@@ -150,14 +150,23 @@ func (m *model) divider() string {
 
 func (m *model) listLines(lh int) []string {
 	if m.mode == modeMenu {
-		cur := m.meta.groupOf(m.menuFor.ID)
-		out := []string{stBold.Render(fmt.Sprintf(tr("menu.title"), m.menuFor.Name))}
+		var title, cur string
+		if m.menuFor != nil {
+			title, cur = fmt.Sprintf(tr("menu.title"), m.menuFor.Name), m.meta.groupOf(m.menuFor.ID)
+		} else if g := m.meta.find(m.menuGroup); g != nil {
+			title, cur = fmt.Sprintf(tr("menu.group.title"), g.Name), g.Parent
+		}
+		out := []string{stBold.Render(title)}
 		first, n := m.menuWindow()
 		for j := first; j < min(len(m.menuItems), first+n); j++ {
 			it := m.menuItems[j]
 			mark := "  "
-			if it.gid == cur && it.gid != "+" {
+			switch {
+			case it.gid == cur && it.gid != "+":
 				mark = "✓ "
+			case it.gid == "-" || it.gid == "+":
+			case m.menuFor == nil && m.meta.isAncestor(it.gid, m.menuGroup):
+				mark = "✗ "
 			}
 			line := fitw(mark+it.label, m.w)
 			if j == m.menuSel {
@@ -197,9 +206,9 @@ func (m *model) rowLine(i int) string {
 		if r.folded {
 			arrow = "▸"
 		}
-		line = stGroup.Render(fitw(fmt.Sprintf("%s %s  (%d)", arrow, r.name, r.count), m.w))
+		line = strings.Repeat("  ", r.depth) + stGroup.Render(fitw(fmt.Sprintf("%s %s  (%d)", arrow, r.name, r.count), m.w-2*r.depth))
 	case m.tab == tabGroup:
-		line = fitw("  "+m.shortName(r)+stDim.Render("  "+oneLine(r.snip.Text)), m.w)
+		line = fitw(strings.Repeat("  ", r.depth+1)+m.shortName(r)+stDim.Render("  "+oneLine(r.snip.Text)), m.w)
 	default:
 		tag := ""
 		if r.gid != "" {

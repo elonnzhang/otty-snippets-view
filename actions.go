@@ -32,30 +32,84 @@ func (m *model) send(run bool) {
 	}
 }
 
-func (m *model) openMenu() {
-	s := m.curSnip()
-	if s == nil {
+// openMenu offers group destinations for the selected snippet, or, with
+// groupWanted set, parents for the selected group.
+func (m *model) openMenu(groupWanted bool) {
+	m.menuItems, m.menuSel = nil, 0
+	var cur string
+	switch r := m.cur(); {
+	case r == nil:
 		m.say(tr("pick.first"))
 		return
+	case groupWanted && !r.group:
+		m.say(tr("pick.group"))
+		return
+	case groupWanted && r.gid == "":
+		m.say(tr("group.no.move"))
+		return
+	case groupWanted:
+		g := m.meta.find(r.gid)
+		if g != nil {
+			cur = g.Parent
+		}
+		m.menuGroup, m.menuFor = r.gid, nil
+		m.menuItems = append(m.menuItems, menuItem{"-", tr("menu.no.parent")})
+		for _, id := range m.meta.treeOrder("") {
+			g := m.meta.find(id)
+			depth := strings.Count(m.meta.path(id), " / ")
+			mark := ""
+			if m.meta.isAncestor(id, r.gid) {
+				mark = "  ✗"
+			}
+			m.menuItems = append(m.menuItems, menuItem{id, strings.Repeat("  ", depth) + g.Name + mark})
+		}
+		m.menuItems = append(m.menuItems, menuItem{"+", tr("menu.new")})
+	case r.group:
+		m.say(tr("pick.snip"))
+		return
+	default:
+		cur = m.meta.groupOf(r.snip.ID)
+		m.menuFor, m.menuGroup = r.snip, ""
+		for _, id := range m.meta.treeOrder("") {
+			g := m.meta.find(id)
+			depth := strings.Count(m.meta.path(id), " / ")
+			m.menuItems = append(m.menuItems, menuItem{id, strings.Repeat("  ", depth) + g.Name})
+		}
+		m.menuItems = append(m.menuItems, menuItem{"", ungroupedName()}, menuItem{"+", tr("menu.new")})
 	}
-	m.menuItems = nil
-	cur := m.meta.groupOf(s.ID)
-	m.menuSel = 0
-	for _, g := range m.meta.Groups {
-		m.menuItems = append(m.menuItems, menuItem{g.ID, g.Name})
-	}
-	m.menuItems = append(m.menuItems, menuItem{"", ungroupedName()}, menuItem{"+", tr("menu.new")})
 	for i, it := range m.menuItems {
 		if it.gid == cur {
 			m.menuSel = i
 		}
 	}
-	m.menuFor, m.mode = s, modeMenu
+	m.mode = modeMenu
+}
+
+// dropGroup puts group gid under parent ("" = top level).
+func (m *model) dropGroup(gid, parent string) {
+	name := m.meta.groupName(gid)
+	if !m.meta.setParent(gid, parent) {
+		m.say(fmt.Sprintf(tr("already.in"), m.meta.groupName(parent)))
+		return
+	}
+	m.persist()
+	m.rebuild("g:" + gid)
+	if parent == "" {
+		m.say(fmt.Sprintf(tr("moved.top"), name))
+	} else {
+		m.say(fmt.Sprintf(tr("moved.group"), name, m.meta.groupName(parent)))
+	}
 }
 
 func (m *model) startPrompt(gid, sid, text string) {
 	m.prompt = newTextInput(text)
-	m.promptGroup, m.promptSnipID, m.mode = gid, sid, modePrompt
+	m.promptGroup, m.promptSnipID, m.promptParent, m.mode = gid, sid, "", modePrompt
+}
+
+// startChildPrompt asks for a new group that will sit under parent.
+func (m *model) startChildPrompt(parent, sid string) {
+	m.startPrompt("", sid, "")
+	m.promptParent = parent
 }
 
 func (m *model) commitPrompt() {
@@ -66,7 +120,7 @@ func (m *model) commitPrompt() {
 	}
 	gid := m.promptGroup
 	if gid == "" {
-		gid = m.meta.add(name)
+		gid = m.meta.addUnder(name, m.promptParent)
 		if m.promptSnipID != "" {
 			m.meta.move(m.promptSnipID, gid)
 		}
@@ -80,7 +134,11 @@ func (m *model) commitPrompt() {
 	} else {
 		m.rebuild("g:" + gid)
 	}
-	m.say(fmt.Sprintf(tr("group.saved"), name))
+	if m.promptParent != "" && m.promptGroup == "" {
+		m.say(fmt.Sprintf(tr("group.under.new"), m.meta.groupName(m.promptParent)))
+	} else {
+		m.say(fmt.Sprintf(tr("group.saved"), name))
+	}
 }
 
 func (m *model) deleteSnippet(id string) {
