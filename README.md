@@ -86,6 +86,28 @@ Placeholders in a snippet's text: `{{clipboard}}` `{{date}}` `{{time}}`. `{{curs
 - `[` / `]` reorder a group among its siblings only.
 - Deleting a group deletes its sub-groups as well; all their snippets move to Ungrouped.
 
+## Herdr plugin
+
+The same binary also runs as a Herdr plugin pane, showing the snippets beside the pane you are working in. Link the plugin once:
+
+```sh
+herdr plugin link /path/to/otty-snippets-view/herdr-plugin
+```
+
+and bind a key to its action in `~/.config/herdr/config.toml`:
+
+```toml
+[[keys.command]]
+key = "prefix+y"
+type = "plugin_action"
+command = "local.otty-snippets.open"
+description = "snippets"
+```
+
+`⏎` types the snippet into the pane the sidebar was opened from (Herdr's invocation context, not the sidebar itself), `o` only fills it in without pressing Enter. `SNIPPETS_TARGET_PANE` overrides the target. Snippets and groups are the same files the Otty view uses, so both hosts stay in sync.
+
+Herdr has no widget slot in its own sidebar, so the plugin opens a split pane — the closest placement it offers. See [herdr-plugin/README.md](herdr-plugin/README.md) for details.
+
 ## Files
 
 - `~/.config/otty/recipes/*.ottyrecipe`: the snippets themselves, the same files Otty's Recipes settings edit. Writes are atomic and keep Otty's format. A file with fields this tool doesn't know is never rewritten; edit it in Otty instead.

@@ -86,6 +86,28 @@ snippet 内容里的占位符：`{{clipboard}}` `{{date}}` `{{time}}`。`{{curso
 - `[` / `]` 只在该分组的同级之间调整顺序。
 - 删除分组会连同它的子分组一起删除，里面的 snippet 都回到未分组。
 
+## Herdr 插件
+
+同一个二进制也可以作为 Herdr 的插件面板运行，把 snippet 显示在你正在用的窗格旁边。先链接一次插件：
+
+```sh
+herdr plugin link /path/to/otty-snippets-view/herdr-plugin
+```
+
+然后在 `~/.config/herdr/config.toml` 里绑定快捷键：
+
+```toml
+[[keys.command]]
+key = "prefix+y"
+type = "plugin_action"
+command = "local.otty-snippets.open"
+description = "snippets"
+```
+
+`⏎` 会把 snippet 输入到打开侧边栏时所在的窗格（来自 Herdr 的调用上下文，不会输入到侧边栏自己），`o` 只填入、不回车。`SNIPPETS_TARGET_PANE` 可以指定目标窗格。snippet 和分组与 Otty 视图用的是同一批文件，两边同步。
+
+Herdr 没有在自己侧边栏内放 widget 的接口，所以插件打开的是一个分屏窗格——这是它提供的最接近的放置方式。详见 [herdr-plugin/README.md](herdr-plugin/README.md)。
+
 ## 文件
 
 - `~/.config/otty/recipes/*.ottyrecipe`：snippet 本身，跟 Otty 设置里 Recipes 编辑的是同一批文件。写入是原子的，格式和 Otty 保持一致。含未知字段的文件不会被改写，请到 Otty 里编辑。

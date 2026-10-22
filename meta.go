@@ -325,6 +325,9 @@ func expand(text string) string {
 }
 
 func sendSnippet(s Snippet, run bool) string {
+	if inHerdr() {
+		return sendSnippetHerdr(s, run)
+	}
 	pane := focusedPane()
 	if pane == "" {
 		return tr("send.nopane")

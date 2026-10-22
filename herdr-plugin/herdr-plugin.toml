@@ -1,0 +1,17 @@
+id = "local.otty-snippets"
+name = "Otty Snippets"
+version = "0.1.0"
+min_herdr_version = "0.9.0"
+description = "Text snippets from Otty's recipes, grouped, in a Herdr sidebar; press Enter to type one into the pane you came from."
+platforms = ["macos"]
+
+[[panes]]
+id = "snippets"
+title = "Snippets"
+command = ["sh", "run.sh"]
+placement = "split"
+
+[[actions]]
+id = "open"
+title = "Open Snippets sidebar"
+command = ["sh", "open.sh"]

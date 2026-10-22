@@ -1,6 +1,7 @@
 # Build artefacts
 /otty-snippets-view
 /dist/
+/herdr-plugin/.build/
 *.new
 
 # Local state, not source
