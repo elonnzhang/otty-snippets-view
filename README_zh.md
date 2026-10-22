@@ -6,24 +6,32 @@ Otty 详情面板里的一个视图。用来管理 Otty 的文本 snippet（`~/.
 
 ## 安装
 
-编译：
+一行命令装上最新 release，并注册成详情面板的视图。以后再跑同一行就是更新：
 
 ```sh
-cd ~/.config/otty/views/otty-snippets-view
-go build -o otty-snippets-view .
+curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/install.sh | sh
 ```
 
-在 `~/.config/otty/config.toml` 里注册视图：
+脚本会把二进制放到 `~/.config/otty/views/otty-snippets-view/`，把 `details-view` 写进 `~/.config/otty/config.toml`（保留原来的 `--lang`），reload 配置，并停掉正在运行的旧视图，下次按 ⌘⇧R 打开就是新版。旧二进制留作 `.bak`，装上的 tag 记在 `.version` 里；如果已经是这个版本就直接跳过。它不会替你打开 `ipc-allow-send-keys`，只在你没开时提醒一句；遇到属于别的工具的 `details-view` 会拒绝，除非加 `--force`。
 
-```toml
-details-view = 'id="snippets" kind="tui" title="Snippets" icon="file" command="/Users/elon/.config/otty/views/otty-snippets-view/otty-snippets-view" mobile="false"'
-```
+| 参数 | 说明 |
+| --- | --- |
+| `--check` | 只打印已装版本和最新版本 |
+| `--dir <path>` | 安装目录，默认 `~/.config/otty/views/otty-snippets-view` |
+| `--version <tag>` | 装指定 release，而不是最新 |
+| `--from <binary>` | 装本地构建，不下载 |
+| `--force` | 同版本也重装；或强行替换别的工具的 `details-view` |
+| `--no-config` | 只放二进制，不动 Otty 配置 |
+| `--no-restart` | 不动正在运行的视图（它会继续用旧版本，直到重开面板） |
+| `--config-file <p>` | 读写指定的配置文件，而不是 Otty 自己的 |
 
-值必须写成带引号的 `key="value"`，写 JSON 会被拒绝。改完执行 `otty config reload`，再把详情面板关掉重开（按两次 ⌘⇧R）。重载配置不会重启正在运行的视图。
+`| sh` 之后的参数要写成 `sh -s --`，例如 `curl -fsSL …/install.sh | sh -s -- --check`。
 
-要把 snippet 发到 pane，配置里需要 `ipc-allow-send-keys = true`。没开的话，执行或填入会报「被拒绝 (检查 ipc-allow-send-keys)」。
+最新 tag 从 `releases/latest` 的跳转地址里取，所以既不需要 `gh` 也不需要 GitHub token，也不会撞 API 限流。
 
-配置直接指向二进制。改了 Go 代码后重新编译，再 reload 配置（或重开面板）即可。
+在源码目录里用 `./release.sh` 走开发流程：vet、测试、构建通用二进制到 `dist/`，再装上（`--fast` 跳过 vet/测试，`--zip` 顺带打 release 用的 zip）。Herdr 插件不用管，它的 `run.sh` 发现有更新的 `.go` 文件时会自己重建。
+
+Otty 重载配置不会重启正在运行的视图，所以脚本会主动停掉旧进程：重开面板（按两次 ⌘⇧R）即可用上新版。
 
 ## 参数
 
@@ -140,16 +148,18 @@ ditto -c -k --keepParent dist/otty-snippets-view dist/otty-snippets-view.zip
 
 体积主要来自语法高亮的 chroma：它的 `lexers` 包内嵌了全部 296 个语言定义（单独就占约 5 MB），只要 import 一次就会全部带上。要只带几个语言，得自己维护一份小的 `embed.FS` 和注册表，代价是没法自动识别语言，所以保持现状。
 
-`main.go` 里的 `noquery/` 必须保留为第一个 import。Bubble Tea 的 `init` 会查询终端背景色，最长等 5 秒，这段时间面板是空白的。`noquery` 提前给出了答案；module 起名 `a/otty-snippets-view`，就是为了让它的 import 路径排在 `bubbletea` 前面。
+`main.go` 里的 `noquery/` 必须保留。Bubble Tea 的 `init` 会查询终端背景色，最长等 5 秒，不回答的终端在这段时间面板是空白的。`noquery` 提前给出答案。module 改成标准路径 `github.com/…/otty-snippets-view` 后，import 顺序不再能保证谁先跑；渲染器会保留先拿到的那个答案，所以它只是把赢面放到我们这边。
 
 代码结构：`store.go`（recipe 和元数据文件）、`meta.go`（分组规则、与 Otty 交互）、`model.go`（状态、行、布局）、`update.go`（键盘、鼠标）、`actions.go`、`view.go` / `detail.go`（渲染）、`highlight.go`、`form.go`、`i18n.go`（全部界面文字）。`dist/` 放分发用的构建产物，不是源码。
 
 ## 分发
 
-从 [latest release](https://github.com/elonnzhang/otty-snippets-view/releases/latest) 下载 `otty-snippets-view.zip`，里面是通用版二进制（arm64 + x86_64）。`dist/` 不进 git，也可以按「开发」里的命令自己打。同事只需要这个二进制和一行配置：
+同事直接用[安装](#安装)里那一行命令：它会从 [latest release](https://github.com/elonnzhang/otty-snippets-view/releases/latest) 拉通用版二进制（arm64 + x86_64）并自己写好配置，以后再跑同一行就是更新。snippet 数据不打包在里面：读的是各自的 `~/.config/otty/recipes`，分组文件 `groups.json` 会新建在 `~/.config/otty/views/otty-snippets-view` 下。要把 snippet 发送到 pane 需要 `ipc-allow-send-keys = true`，这个开关脚本留给他自己决定。
+
+想手动安装的话，从 release 下载 `otty-snippets-view.zip`，解压后加上这一行：
 
 ```toml
 details-view = 'id="snippets" kind="tui" title="Snippets" icon="file" command="/path/to/otty-snippets-view" mobile="false"'
 ```
 
-Agent 可以按 [SETUP-PROMPT.md](SETUP-PROMPT.md) 里的 prompt 自动完成安装。然后 `otty config reload`，再重开详情面板。第一次运行如果被 Gatekeeper 拦下，右键 → 打开，或者执行 `xattr -d com.apple.quarantine otty-snippets-view`。snippet 数据不打包在里面：读的是各自的 `~/.config/otty/recipes`，分组文件 `groups.json` 会新建在 `~/.config/otty/views/otty-snippets-view` 下。要把 snippet 发送到 pane，还需要 `ipc-allow-send-keys = true`。
+Agent 可以按 [SETUP-PROMPT.md](SETUP-PROMPT.md) 里的 prompt 自动完成安装。第一次运行如果被 Gatekeeper 拦下，右键 → 打开，或者执行 `xattr -d com.apple.quarantine otty-snippets-view`。

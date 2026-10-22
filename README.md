@@ -6,24 +6,34 @@ A view for Otty's details panel. It manages Otty's text-snippet recipes (`~/.con
 
 ## Install
 
-Build:
+One line installs the latest release and registers it as the details-panel view. Running the same line again updates to the newest release:
 
 ```sh
-cd ~/.config/otty/views/otty-snippets-view
-go build -o otty-snippets-view .
+curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/install.sh | sh
 ```
 
-Register the view in `~/.config/otty/config.toml`:
+The script puts the binary in `~/.config/otty/views/otty-snippets-view/`, writes `details-view` into `~/.config/otty/config.toml` (keeping an existing `--lang`), reloads the config and stops any running copy, so the next ⌘⇧R opens the new build. It keeps the previous binary as `.bak`, records the installed tag in `.version`, and skips the work when that tag is already the latest. It never turns on `ipc-allow-send-keys` — it only reminds you when that switch is off — and refuses to replace a `details-view` that belongs to another tool unless given `--force`.
 
-```toml
-details-view = 'id="snippets" kind="tui" title="Snippets" icon="file" command="/Users/elon/.config/otty/views/otty-snippets-view/otty-snippets-view" mobile="false"'
-```
+| Option | Meaning |
+| --- | --- |
+| `--check` | print installed and latest tags, then stop |
+| `--dir <path>` | install directory (default `~/.config/otty/views/otty-snippets-view`) |
+| `--version <tag>` | a specific release instead of the latest |
+| `--from <binary>` | install a local build instead of downloading |
+| `--force` | reinstall the same tag / replace another tool's `details-view` |
+| `--no-config` | only place the binary; leave Otty's config alone |
+| `--no-restart` | leave a running view alone (it keeps the old build until reopened) |
+| `--config-file <p>` | read and write this config instead of Otty's own |
 
-The value must be quoted `key="value"` pairs; JSON is rejected. Reload with `otty config reload`, then reopen the details panel (⌘⇧R twice). Otty does not restart a running view on reload.
+Options after a pipe go through `sh -s --`, e.g. `curl -fsSL …/install.sh | sh -s -- --check`.
+
+It reads the latest tag from the `releases/latest` redirect, so it needs neither `gh` nor a GitHub token and does not hit the API rate limit.
+
+From a checkout, `./release.sh` is the development loop: vet, test, build a universal binary into `dist/` and install it (`--fast` skips vet/test, `--zip` also builds the release zip). The Herdr plugin needs nothing extra — its `run.sh` rebuilds the binary it uses whenever a `.go` file is newer.
+
+`details-view` must be quoted `key="value"` pairs; JSON is rejected. Otty does not restart a running view when the config is reloaded, which is why the script stops the old process: reopen the panel (⌘⇧R twice) to run the new build.
 
 Sending a snippet to a pane requires `ipc-allow-send-keys = true` in the config. Without it, run/fill fails with "rejected (check ipc-allow-send-keys)".
-
-The config points straight at the binary; rebuild and reload the config (or reopen the panel) after changing the Go code.
 
 ## Options
 
@@ -140,16 +150,18 @@ ditto -c -k --keepParent dist/otty-snippets-view dist/otty-snippets-view.zip
 
 Most of the size is the syntax highlighter: chroma's `lexers` package embeds all 296 lexer definitions (about 5 MB on its own), and any single import of it pulls them all in. Shipping only a handful of lexers would need our own small `embed.FS` and registry, which costs auto-detection, so the full set stays.
 
-`noquery/` must stay the first import in `main.go`. Bubble Tea's `init` queries the terminal background color and waits up to 5s, which leaves the panel blank. `noquery` sets the answer first, and the module is named `a/otty-snippets-view` so its import path sorts before `bubbletea`.
+`noquery/` must stay imported by `main.go`. Bubble Tea's `init` asks the terminal for its background color and waits up to 5s for an answer; a terminal that never answers leaves the panel blank that long. `noquery` answers first. Import order can't guarantee which one runs first now that the module path is `github.com/…/otty-snippets-view`, so treat it as a race in our favor: the renderer keeps whichever answer it gets first.
 
 Code map: `store.go` (recipe and metadata files), `meta.go` (grouping rules, talking to Otty), `model.go` (state, rows, layout), `update.go` (keys, mouse), `actions.go`, `view.go` / `detail.go` (rendering), `highlight.go`, `form.go`, `i18n.go` (all UI strings). `dist/` holds shareable builds, not sources.
 
 ## Share it
 
-Download `otty-snippets-view.zip` from the [latest release](https://github.com/elonnzhang/otty-snippets-view/releases/latest): a universal (arm64 + x86_64) build. It is not committed to git; build your own with the commands under Development. A colleague only needs the binary and one config line:
+Send a colleague the install line from [Install](#install). It pulls the universal (arm64 + x86_64) build from the [latest release](https://github.com/elonnzhang/otty-snippets-view/releases/latest) and writes the config line themselves; the same line updates them later. Snippets are not bundled: each person's own `~/.config/otty/recipes` is listed, and a fresh `groups.json` is created in `~/.config/otty/views/otty-snippets-view`. Sending to a pane needs `ipc-allow-send-keys = true`, which the script leaves to them.
+
+To install by hand instead, download `otty-snippets-view.zip` from that release, unzip it, and add:
 
 ```toml
 details-view = 'id="snippets" kind="tui" title="Snippets" icon="file" command="/path/to/otty-snippets-view" mobile="false"'
 ```
 
-An agent can do the install from the prompt in [SETUP-PROMPT.md](SETUP-PROMPT.md). Then `otty config reload` and reopen the details panel. If Gatekeeper blocks the first launch, right-click → Open, or run `xattr -d com.apple.quarantine otty-snippets-view`. Snippets are not bundled: each person's own `~/.config/otty/recipes` is listed, and a fresh `groups.json` is created in `~/.config/otty/views/otty-snippets-view`. Sending to a pane needs `ipc-allow-send-keys = true`.
+An agent can do the install from the prompt in [SETUP-PROMPT.md](SETUP-PROMPT.md). If Gatekeeper blocks the first launch, right-click → Open, or run `xattr -d com.apple.quarantine otty-snippets-view`.

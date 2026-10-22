@@ -1,5 +1,7 @@
 # Build artefacts
 /otty-snippets-view
+/otty-snippets-view.bak
+/.version
 /dist/
 /herdr-plugin/.build/
 *.new

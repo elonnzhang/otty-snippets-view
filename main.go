@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"os"
 
-	_ "a/otty-snippets-view/noquery" // must stay: see the package comment
+	_ "github.com/elonnzhang/otty-snippets-view/noquery" // must stay: see the package comment
 	tea "github.com/charmbracelet/bubbletea"
 )
 

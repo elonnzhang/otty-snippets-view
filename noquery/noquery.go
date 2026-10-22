@@ -3,12 +3,15 @@
 //
 // Bubble Tea v1 calls lipgloss.HasDarkBackground() from its own init(), which
 // writes that query and then blocks for up to five seconds waiting for a reply.
-// A terminal that does not answer (such as a details-panel view) leaves the
-// program blank for that long, and a late reply can swallow the first keystroke.
+// A terminal that does not answer leaves the program blank for that long, and a
+// late reply can swallow the first keystroke. The details panel is one such
+// terminal: Otty gives a view a tty, but a view that finds nothing listening is
+// left waiting.
 //
-// Go runs package init functions in import-path order once their dependencies
-// are ready, so this package must sort before "github.com/charmbracelet/bubbletea";
-// that is why the module is named "a/otty-snippets-view" rather than "otty-snippets-view".
+// Import order alone cannot be relied on for this: Go runs init functions in
+// import-path order, and this module's path sorts after github.com/charmbracelet
+// once it carries its real name. Whatever runs first here just answers the query
+// early; the renderer's answer is fixed once made, so the second call is a no-op.
 package noquery
 
 import "github.com/charmbracelet/lipgloss"
