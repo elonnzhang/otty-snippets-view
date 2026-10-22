@@ -5,26 +5,20 @@
 // With HERDR_PANE_ID set it also runs as a Herdr plugin pane, started by
 // herdr-plugin/run.sh: Herdr hands the process its invocation in environment
 // variables, and snippets go to the pane the plugin was invoked for.
+//
+// The view itself lives in internal/app; this file only starts it.
 package main
 
 import (
 	"fmt"
 	"os"
 
-	_ "github.com/elonnzhang/otty-snippets-view/noquery" // must stay: see the package comment
-	tea "github.com/charmbracelet/bubbletea"
+	"github.com/elonnzhang/otty-snippets-view/internal/app"
+	_ "github.com/elonnzhang/otty-snippets-view/internal/noquery" // must stay: see the package comment
 )
 
 func main() {
-	applyLang(os.Args[1:])
-	opts := []tea.ProgramOption{tea.WithMouseCellMotion()}
-	if !inHerdr() {
-		// Otty's panel is full screen; a Herdr sidebar is a column in the layout,
-		// where the alternate screen would erase everything around it.
-		opts = append(opts, tea.WithAltScreen())
-	}
-	p := tea.NewProgram(newModel(), opts...)
-	if _, err := p.Run(); err != nil {
+	if err := app.Run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "otty-snippets-view:", err)
 		os.Exit(1)
 	}

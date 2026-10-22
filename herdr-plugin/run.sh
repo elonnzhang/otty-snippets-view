@@ -7,7 +7,7 @@ here="$(cd "$(dirname "$0")" && pwd)"
 bin="$here/.build/otty-snippets-view"
 src="$here/.."
 
-if [ ! -x "$bin" ] || [ -n "$(find "$src" -maxdepth 1 -name '*.go' -newer "$bin" -print -quit)" ]; then
+if [ ! -x "$bin" ] || [ -n "$(find "$src" -name '*.go' -not -path '*/.build/*' -newer "$bin" -print -quit)" ]; then
   if ! sh "$here/build.sh"; then
     if [ -x "$bin" ]; then
       # A stale binary beats an empty pane.

@@ -154,9 +154,9 @@ ditto -c -k --keepParent dist/otty-snippets-view dist/otty-snippets-view.zip
 
 体积主要来自语法高亮的 chroma：它的 `lexers` 包内嵌了全部 296 个语言定义（单独就占约 5 MB），只要 import 一次就会全部带上。要只带几个语言，得自己维护一份小的 `embed.FS` 和注册表，代价是没法自动识别语言，所以保持现状。
 
-`main.go` 里的 `noquery/` 必须保留。Bubble Tea 的 `init` 会查询终端背景色，最长等 5 秒，不回答的终端在这段时间面板是空白的。`noquery` 提前给出答案。module 改成标准路径 `github.com/…/otty-snippets-view` 后，import 顺序不再能保证谁先跑；渲染器会保留先拿到的那个答案，所以它只是把赢面放到我们这边。
+`main.go` 里的 `internal/noquery/` 必须保留。Bubble Tea 的 `init` 会查询终端背景色，最长等 5 秒，不回答的终端在这段时间面板是空白的。`noquery` 提前给出答案。module 改成标准路径 `github.com/…/otty-snippets-view` 后，import 顺序不再能保证谁先跑；渲染器会保留先拿到的那个答案，所以它只是把赢面放到我们这边。
 
-代码结构：`store.go`（recipe 和元数据文件）、`meta.go`（分组规则、与 Otty 交互）、`model.go`（状态、行、布局）、`update.go`（键盘、鼠标）、`actions.go`、`view.go` / `detail.go`（渲染）、`highlight.go`、`form.go`、`i18n.go`（全部界面文字）。`dist/` 放分发用的构建产物，不是源码。
+`main.go` 只负责启动，界面代码在 `internal/app/`。代码结构：`store.go`（recipe 和元数据文件）、`meta.go`（分组规则、与 Otty 交互）、`model.go`（状态、行、布局）、`update.go`（键盘、鼠标）、`actions.go`、`view.go` / `detail.go`（渲染）、`highlight.go`、`form.go`、`i18n.go`（全部界面文字）。`dist/` 放分发用的构建产物，不是源码。
 
 ## 分发
 

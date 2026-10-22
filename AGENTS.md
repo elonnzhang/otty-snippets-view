@@ -8,14 +8,14 @@ otty-snippets-view is a Bubble Tea TUI for Otty's details panel; the same binary
 
 ```sh
 go vet ./... && go test ./...           # the checks release.sh runs
-go test -run TestNestedGroups -v .      # one test; every test is in package main at the root
+go test -run TestNestedGroups -v ./...  # one test; every test is in package app under internal/
 go build -o /tmp/otty-snippets-view .   # compile check (don't build into the repo root, see below)
 ./release.sh                            # vet + test, then build and install into the live Otty panel
 ./release.sh --fast                     # skip vet/test; --zip also builds the universal dist/ zip (lipo, ditto)
 sh install.sh --from dev                # build + install + refresh the panel, without the checks
 ```
 
-There is no linter config. `gofmt -l .` currently flags only main.go, for the position of the `noquery` import; init order is decided by import path regardless (see noquery/noquery.go).
+There is no linter config; `gofmt -l .` should stay empty. The root is only `main.go`, which calls `app.Run` (`internal/app/run.go`).
 
 ## This checkout is also the live install
 
@@ -30,7 +30,7 @@ Never enable or change `ipc-allow-send-keys` or `ipc-allow-sensitive-sessions`. 
 
 ## Architecture
 
-Everything is one `package main`, plus `noquery/`, which main.go must keep importing: it answers lipgloss's start-up background-colour query, which otherwise leaves the panel blank for up to 5 s. README's "Code map" line says which file holds what.
+The root `main.go` starts the program; all view code is `package app` in `internal/app/`. `internal/noquery/`, which main.go must keep importing, answers lipgloss's start-up background-colour query, which otherwise leaves the panel blank for up to 5 s. README's "Code map" line says which file holds what.
 
 **Data.** Snippets are Otty's own files (`*.ottyrecipe`, TOML, `scope = "text_snippet"`). `saveSnippet` writes them by hand in Otty's encoder format (`tomlStr`) via tmp file + rename. A file with unknown fields or `version != 1` is parsed with `Foreign` set and must never be rewritten. Deleting moves the file to `trash/`. Everything this tool adds (groups, manual assignments, colors, tab, detail height) lives in `Meta`, stored in `groups.json`; nothing goes into recipe files.
 
@@ -46,15 +46,15 @@ Everything is one `package main`, plus `noquery/`, which main.go must keep impor
 - Otty panel: `focusedPane()` asks `otty pane show --json` and ignores the view's own `OTTY_PANE_ID`. A view process has no `otty` on PATH, so `ottyCLI()` falls back to the app bundle. Text goes through `otty pane send-text`, and exit code 7 means Otty refused (its stderr names the reason).
 - An Otty pane running a Herdr client: Otty refuses to type there, so the snippet goes through that client's Herdr session. Otty's `ipc-allow-send-keys` and `ipc-allow-sensitive-sessions` rules are re-checked first, and when Herdr can't report the target's foreground process the send fails closed.
 
-`expand()` fills `{{clipboard}}` / `{{date}}` / `{{time}}` and strips `{{cursor}}`. The program is macOS-only (`pbcopy`/`pbpaste`, the Otty app path). Under Herdr, main.go skips the alt screen so the pane reads as a sidebar column.
+`expand()` fills `{{clipboard}}` / `{{date}}` / `{{time}}` and strips `{{cursor}}`. The program is macOS-only (`pbcopy`/`pbpaste`, the Otty app path). Under Herdr, `app.Run` skips the alt screen so the pane reads as a sidebar column.
 
-**Herdr plugin** (`herdr-plugin/`). A manifest plus shell scripts that build the parent directory into `herdr-plugin/.build/`; `run.sh` rebuilds when any root `.go` file is newer than that binary, so source changes need no extra step there.
+**Herdr plugin** (`herdr-plugin/`). A manifest plus shell scripts that build the parent directory into `herdr-plugin/.build/`; `run.sh` rebuilds when any `.go` file in the checkout is newer than that binary, so source changes need no extra step there.
 
 **Strings and styles.** Every UI string is a `{English, Chinese}` pair in `dict` (i18n.go), read with `tr(key)`; a missing key renders as the key itself. One-off pairs use `pick(en, zh)`. Built-in styles and item colors use ANSI palette indices (`lipgloss.Color("4")`), not fixed RGB, so the view follows the Otty theme.
 
 ## Tests
 
-UI tests drive the whole model without a terminal. `ctxTestModel(t)` (ctxmenu_test.go) points `OTTY_RECIPES_DIR` and `SNIPPETS_HOME` at temp dirs, sets `lang = "en"`, saves one `[db]-ping` snippet and returns a 60×20 model in the Groups tab. Feed it `m.onKey(tea.KeyMsg{...})` and `m.onMouse(...)` (helpers: `click`, `rightClick`, `rowIndex`, `hintColumn`, `openForm`, `openConfirm`), then assert on `ansi.Strip(m.View())` or model fields. Any new test that touches storage needs the same env isolation. Herdr tests replace the CLI with a shell script through `HERDR_BIN_PATH` (and `PATH`) that logs its arguments.
+UI tests drive the whole model without a terminal. `ctxTestModel(t)` (internal/app/ctxmenu_test.go) points `OTTY_RECIPES_DIR` and `SNIPPETS_HOME` at temp dirs, sets `lang = "en"`, saves one `[db]-ping` snippet and returns a 60×20 model in the Groups tab. Feed it `m.onKey(tea.KeyMsg{...})` and `m.onMouse(...)` (helpers: `click`, `rightClick`, `rowIndex`, `hintColumn`, `openForm`, `openConfirm`), then assert on `ansi.Strip(m.View())` or model fields. Any new test that touches storage needs the same env isolation. Herdr tests replace the CLI with a shell script through `HERDR_BIN_PATH` (and `PATH`) that logs its arguments.
 
 ## Conventions
 

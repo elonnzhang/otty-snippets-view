@@ -156,9 +156,9 @@ ditto -c -k --keepParent dist/otty-snippets-view dist/otty-snippets-view.zip
 
 Most of the size is the syntax highlighter: chroma's `lexers` package embeds all 296 lexer definitions (about 5 MB on its own), and any single import of it pulls them all in. Shipping only a handful of lexers would need our own small `embed.FS` and registry, which costs auto-detection, so the full set stays.
 
-`noquery/` must stay imported by `main.go`. Bubble Tea's `init` asks the terminal for its background color and waits up to 5s for an answer; a terminal that never answers leaves the panel blank that long. `noquery` answers first. Import order can't guarantee which one runs first now that the module path is `github.com/…/otty-snippets-view`, so treat it as a race in our favor: the renderer keeps whichever answer it gets first.
+`internal/noquery/` must stay imported by `main.go`. Bubble Tea's `init` asks the terminal for its background color and waits up to 5s for an answer; a terminal that never answers leaves the panel blank that long. `noquery` answers first. Import order can't guarantee which one runs first now that the module path is `github.com/…/otty-snippets-view`, so treat it as a race in our favor: the renderer keeps whichever answer it gets first.
 
-Code map: `store.go` (recipe and metadata files), `meta.go` (grouping rules, talking to Otty), `model.go` (state, rows, layout), `update.go` (keys, mouse), `actions.go`, `view.go` / `detail.go` (rendering), `highlight.go`, `form.go`, `i18n.go` (all UI strings). `dist/` holds shareable builds, not sources.
+`main.go` only starts the program; the view is `internal/app/`. Code map: `store.go` (recipe and metadata files), `meta.go` (grouping rules, talking to Otty), `model.go` (state, rows, layout), `update.go` (keys, mouse), `actions.go`, `view.go` / `detail.go` (rendering), `highlight.go`, `form.go`, `i18n.go` (all UI strings). `dist/` holds shareable builds, not sources.
 
 ## Share it
 
