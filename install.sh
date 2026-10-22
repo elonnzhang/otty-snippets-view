@@ -245,7 +245,7 @@ if [ "$do_config" = 1 ]; then
   esac
 
   if [ -z "${want:-}" ]; then
-    want="id=\"snippets\" kind=\"tui\" title=\"Snippets\" icon=\"file\" command=\"$cmd\" mobile=\"false\""
+    want="id=\"snippets\" kind=\"tui\" title=\"Snippets\" icon=\"command\" command=\"$cmd\" mobile=\"false\""
   else
     # Never take over a details panel that belongs to another tool.
     case "$want" in
