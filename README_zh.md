@@ -88,17 +88,17 @@ snippet 内容里的占位符：`{{clipboard}}` `{{date}}` `{{time}}`。`{{curso
 
 ## Herdr 插件
 
-同一个二进制也可以作为 Herdr 的插件面板运行，把 snippet 显示在你正在用的窗格旁边。先链接一次插件：
+同一个二进制也可以作为 Herdr 的插件面板运行，把 snippet 显示在你正在用的窗格旁边。先安装一次插件（安装时需要 Go，清单里会执行构建）：
 
 ```sh
-herdr plugin link /path/to/otty-snippets-view/herdr-plugin
+herdr plugin install elonnzhang/otty-snippets-view/herdr-plugin
 ```
 
 然后在 `~/.config/herdr/config.toml` 里绑定快捷键：
 
 ```toml
 [[keys.command]]
-key = "prefix+y"
+key = "prefix+shift+s"
 type = "plugin_action"
 command = "local.otty-snippets.open"
 description = "snippets"

@@ -88,17 +88,17 @@ Placeholders in a snippet's text: `{{clipboard}}` `{{date}}` `{{time}}`. `{{curs
 
 ## Herdr plugin
 
-The same binary also runs as a Herdr plugin pane, showing the snippets beside the pane you are working in. Link the plugin once:
+The same binary also runs as a Herdr plugin pane, showing the snippets beside the pane you are working in. Install the plugin once (needs Go: the manifest builds the binary during install):
 
 ```sh
-herdr plugin link /path/to/otty-snippets-view/herdr-plugin
+herdr plugin install elonnzhang/otty-snippets-view/herdr-plugin
 ```
 
 and bind a key to its action in `~/.config/herdr/config.toml`:
 
 ```toml
 [[keys.command]]
-key = "prefix+y"
+key = "prefix+shift+s"
 type = "plugin_action"
 command = "local.otty-snippets.open"
 description = "snippets"
