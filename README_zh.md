@@ -12,7 +12,7 @@ Otty 详情面板里的一个视图。用来管理 Otty 的文本 snippet（`~/.
 curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/install.sh | sh
 ```
 
-脚本会把二进制放到 `~/.config/otty/views/otty-snippets-view/`，把 `details-view` 写进 `~/.config/otty/config.toml`（保留原来的 `--lang`），reload 配置，并停掉正在运行的旧视图，下次按 ⌘⇧R 打开就是新版。旧二进制留作 `.bak`，装上的 tag 记在 `.version` 里；如果已经是这个版本就直接跳过。它不会替你打开 `ipc-allow-send-keys`，只在你没开时提醒一句；遇到属于别的工具的 `details-view` 会拒绝，除非用 `FORCE=1` 启动脚本。
+脚本会把二进制放到 `~/.config/otty/views/otty-snippets-view/`，把 `details-view` 写进 `~/.config/otty/config.toml`（保留原来的 `--lang`），reload 配置，并停掉正在运行的旧视图，下次按 ⌘⇧R 打开就是新版。旧二进制留作 `.bak`，装上的 tag 记在 `.version` 里；如果已经是这个版本就直接跳过。它不会替你打开 `ipc-allow-send-keys`，只在你没开时提醒一句。`details-view` 是列表，一行一个视图；脚本只改写 snippets 这一项（没有就加在末尾），其余视图原样写回。
 
 | 参数 | 说明 |
 | --- | --- |
@@ -29,6 +29,29 @@ curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/
 
 最新 tag 从 `releases/latest` 的跳转地址里取，所以既不需要 `gh` 也不需要 GitHub token，也不会撞 API 限流。
 
+装了 Go 也可以直接 `go install`。它只构建本机架构（不是通用版），也不会改 Otty 配置：
+
+```sh
+go install github.com/elonnzhang/otty-snippets-view@latest
+```
+
+二进制在 `$(go env GOPATH)/bin/otty-snippets-view`，`otty-snippets-view --version` 能看到它是从哪个版本构建的。用 `init` 注册到 Otty：
+
+```sh
+otty-snippets-view init            # 添加或更新 snippets 这一项，然后让 Otty reload
+otty-snippets-view init --reset    # 再删掉它
+```
+
+`init` 把这一项的 command 指向当前运行的这个二进制，保留这一项的其他字段和 `--lang`。和安装脚本一样，它在 `details-view` 列表里只动 snippets 这一项（`id="snippets"`，或 command 运行的是 `otty-snippets-view`），其余视图不变。之后重开面板（按两次 ⌘⇧R）。
+
+| 参数 | 说明 |
+| --- | --- |
+| `--lang en\|cn` | 视图 command 用的语言（默认沿用原来的，没有就是英文） |
+| `--print` | 打印将要写入的 `details-view` 列表（一行一个视图）后退出 |
+| `--reset` | 删除 snippets 这一项，而不是写入 |
+| `--config-file <p>` | 改这个配置文件而不是 Otty 自己的（不 reload） |
+| `--no-reload` | 不让正在运行的 Otty reload 配置 |
+
 在源码目录里用 `./release.sh` 走开发流程：vet、测试，然后构建并安装当前工作区（即 `sh install.sh --from dev`）；`--fast` 跳过 vet/测试，`--zip` 顺带打 release 用的 zip。单独跑 `sh install.sh --from dev` 就是去掉这两项检查的同一条路，而且面板开着也能用——每次安装的 command 都会变，Otty 因此会启动新构建。Herdr 插件不用管，它的 `run.sh` 发现有更新的 `.go` 文件时会自己重建。
 
 Otty 重载配置不会重启正在运行的视图，所以脚本每次都会改写 command 并停掉旧进程：面板开着时会直接换成新构建，否则重开面板（按两次 ⌘⇧R）即可用上。
@@ -38,6 +61,7 @@ Otty 重载配置不会重启正在运行的视图，所以脚本每次都会改
 | 参数 | 说明 |
 | --- | --- |
 | `--lang en\|cn` | 界面语言，默认英文。也可写 `--lang=cn`，`zh`、`zh-CN`、`中文` 同样认 |
+| `--version` | 打印构建版本后退出（`go install` 装的也能看） |
 | `SNIPPETS_LANG` | 作用同 `--lang`，命令行参数优先 |
 | `OTTY_RECIPES_DIR` | recipe 目录，默认 `~/.config/otty/recipes` |
 | `SNIPPETS_HOME` | `groups.json` 和 `trash/` 所在目录，默认 `~/.config/otty/views/otty-snippets-view` |

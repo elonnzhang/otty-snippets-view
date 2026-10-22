@@ -12,7 +12,7 @@ One line installs the latest release and registers it as the details-panel view.
 curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/install.sh | sh
 ```
 
-The script puts the binary in `~/.config/otty/views/otty-snippets-view/`, writes `details-view` into `~/.config/otty/config.toml` (keeping an existing `--lang`), reloads the config and stops any running copy, so the next ⌘⇧R opens the new build. It keeps the previous binary as `.bak`, records the installed tag in `.version`, and skips the work when that tag is already the latest. It never turns on `ipc-allow-send-keys` — it only reminds you when that switch is off — and refuses to replace a `details-view` that belongs to another tool unless started with `FORCE=1`.
+The script puts the binary in `~/.config/otty/views/otty-snippets-view/`, writes `details-view` into `~/.config/otty/config.toml` (keeping an existing `--lang`), reloads the config and stops any running copy, so the next ⌘⇧R opens the new build. It keeps the previous binary as `.bak`, records the installed tag in `.version`, and skips the work when that tag is already the latest. It never turns on `ipc-allow-send-keys` — it only reminds you when that switch is off. `details-view` is a list, one view per line; the script rewrites only the snippets entry (or adds it at the end) and writes the other views back as they were.
 
 | Option | Meaning |
 | --- | --- |
@@ -29,6 +29,29 @@ Options after a pipe go through `sh -s --`, e.g. `curl -fsSL …/install.sh | sh
 
 It reads the latest tag from the `releases/latest` redirect, so it needs neither `gh` nor a GitHub token and does not hit the API rate limit.
 
+With Go installed, `go install` works too. It builds for this machine only (no universal binary) and does not touch Otty's config:
+
+```sh
+go install github.com/elonnzhang/otty-snippets-view@latest
+```
+
+The binary lands in `$(go env GOPATH)/bin/otty-snippets-view`; `otty-snippets-view --version` prints what it was built from. Register it with `init`:
+
+```sh
+otty-snippets-view init            # add or update the snippets entry, then reload Otty
+otty-snippets-view init --reset    # remove it again
+```
+
+`init` points the entry at the binary it is run as and keeps that entry's other fields and `--lang`. Like the script, it changes only the snippets entry (`id="snippets"`, or a command that runs `otty-snippets-view`) in the `details-view` list; the other views stay. Then reopen the panel (⌘⇧R twice).
+
+| Flag | Meaning |
+| --- | --- |
+| `--lang en\|cn` | language for the view's command (default: keep the current one, else English) |
+| `--print` | print the `details-view` list it would write, one view per line, and stop |
+| `--reset` | remove the snippets entry instead of writing it |
+| `--config-file <p>` | edit this config instead of Otty's own (no reload) |
+| `--no-reload` | don't ask a running Otty to reload its config |
+
 From a checkout, `./release.sh` is the development loop: vet, test, then build and install the working tree (`sh install.sh --from dev`); `--fast` skips vet/test and `--zip` also builds the release zip. `sh install.sh --from dev` on its own is the same loop without the checks, and works with the panel open — the installed command changes on every run, which is what makes Otty start the new build. The Herdr plugin needs nothing extra — its `run.sh` rebuilds the binary it uses whenever a `.go` file is newer.
 
 `details-view` must be quoted `key="value"` pairs; JSON is rejected. Otty does not restart a running view when the config is reloaded, which is why the script rewrites the command and stops the old process: with the panel open it switches to the new build, otherwise reopen the panel (⌘⇧R twice).
@@ -40,6 +63,7 @@ Sending a snippet to a pane requires `ipc-allow-send-keys = true` in the config.
 | Option | Meaning |
 | --- | --- |
 | `--lang en\|cn` | UI language, English by default. Also `--lang=cn`; `zh`, `zh-CN` and `中文` work as well. |
+| `--version` | print the build version and exit (also works for a `go install` build). |
 | `SNIPPETS_LANG` | Same as `--lang`; the flag wins. |
 | `OTTY_RECIPES_DIR` | Recipe directory, default `~/.config/otty/recipes`. |
 | `SNIPPETS_HOME` | Where `groups.json` and `trash/` live, default `~/.config/otty/views/otty-snippets-view`. |

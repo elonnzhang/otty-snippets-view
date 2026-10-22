@@ -9,8 +9,7 @@
 #   sh install.sh --from ./otty-snippets-view  # install a local build
 #
 # Variables:
-#   FORCE=1             replace a details-view that belongs to something else
-#                       (the only option that can't follow a pipe), e.g.
+#   FORCE=1             the same as --force, for the piped form, e.g.
 #                       curl -fsSL .../install.sh | FORCE=1 sh
 #
 # Options:
@@ -33,8 +32,7 @@ REPO=elonnzhang/otty-snippets-view
 ASSET=otty-snippets-view.zip
 BIN=otty-snippets-view
 
-# Replace a details-view that belongs to something else. This is the one
-# option that can't be passed after a pipe, where its arguments belong to sh.
+# Reinstall even when already on that tag; --force does the same.
 FORCE=${FORCE:-0}
 
 dir="${OTTY_SNIPPETS_DIR:-$HOME/.config/otty/views/otty-snippets-view}"
@@ -217,16 +215,20 @@ if [ "$do_config" = 1 ]; then
     fi
   }
 
-  want=""
+  # details-view is a list key: `config get` prints one view per line and
+  # `config set` takes the whole list back. Only our entry is rewritten (or
+  # added at the end); the other views are written back as they were.
+  current=""
   if [ -n "$config_file" ] && [ ! -e "$config_file" ]; then
     : # a missing override file is an empty config
   else
-    want=$(otty_config get details-view 2>/dev/null) || die "could not read details-view from the Otty config"
+    current=$(otty_config get details-view 2>/dev/null) || die "could not read details-view from the Otty config"
   fi
+  ours=$(printf '%s\n' "$current" | grep -F -e otty-snippets-view -e 'id="snippets"' | head -n 1)
 
   lang=""
-  if [ -n "${want:-}" ]; then
-    lang=$(printf '%s\n' "$want" | sed -n 's/.*--lang[= ]\([A-Za-z_-]*\).*/\1/p')
+  if [ -n "$ours" ]; then
+    lang=$(printf '%s\n' "$ours" | sed -n 's/.*--lang[= ]\([A-Za-z_-]*\).*/\1/p')
     case "$lang" in
       zh|cn|zh-cn|zh_cn|chinese|中文) lang=cn ;;
       en|en-us) lang=en ;;
@@ -239,34 +241,31 @@ if [ "$do_config" = 1 ]; then
   # the command alternates between two spellings of the same language flag,
   # which makes every run (even on the same tag) bring up a fresh copy.
   [ -n "$lang" ] || lang=en
-  case "$want" in
+  case "$ours" in
     *"command=\"$bin --lang $lang\""*) cmd="$bin --lang=$lang" ;;
     *) cmd="$bin --lang $lang" ;;
   esac
+  fresh="id=\"snippets\" kind=\"tui\" title=\"Snippets\" icon=\"command\" command=\"$cmd\" mobile=\"false\""
 
-  if [ -z "${want:-}" ]; then
-    want="id=\"snippets\" kind=\"tui\" title=\"Snippets\" icon=\"command\" command=\"$cmd\" mobile=\"false\""
-  else
-    # Never take over a details panel that belongs to another tool.
-    case "$want" in
-      *otty-snippets-view*|*'id="snippets"'*) ;;
-      *)
-        [ "$force" = 1 ] || die "details-view belongs to something else; set FORCE=1 to replace it (the piped form cannot take --force):
-  $want"
-        ;;
-    esac
-    case "$want" in
-      *command=*) want=$(printf '%s\n' "$want" | sed "s#command=\"[^\"]*\"#command=\"$cmd\"#") ;;
-      *)
-        warn "details-view has no command= field; replacing it"
-        want="id=\"snippets\" kind=\"tui\" title=\"Snippets\" icon=\"file\" command=\"$cmd\" mobile=\"false\""
-        ;;
-    esac
-  fi
+  # awk gets the values through the environment, so no character in a path is
+  # read as a regex or a replacement pattern. An entry of ours without a
+  # command= field is replaced by a fresh one. Otty only accepts double-quoted
+  # field values, so those are the only ones matched.
+  want=$(printf '%s\n' "$current" | CMD="$cmd" FRESH="$fresh" awk '
+    NF == 0 { next }
+    index($0, "otty-snippets-view") || index($0, "id=\"snippets\"") {
+      found = 1
+      if (match($0, /command="[^"]*"/)) $0 = substr($0, 1, RSTART - 1) "command=\"" ENVIRON["CMD"] "\"" substr($0, RSTART + RLENGTH)
+      else $0 = ENVIRON["FRESH"]
+    }
+    { print }
+    END { if (!found) print ENVIRON["FRESH"] }')
 
   before=$(views)
   otty_config set details-view "$want" >/dev/null
-  say "details-view = $want"
+  say "details-view = $(printf '%s\n' "$want" | grep -F -e otty-snippets-view | head -n 1)"
+  kept=$(printf '%s\n' "$want" | grep -c -v -F -e otty-snippets-view || true)
+  [ "$kept" = 0 ] || say "kept the other $kept details-view entries"
   if [ -z "$config_file" ]; then
     otty config reload >/dev/null 2>&1 || warn "could not ask Otty to reload its config"
   fi

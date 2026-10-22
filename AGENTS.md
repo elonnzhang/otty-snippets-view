@@ -24,7 +24,8 @@ The repo lives at `~/.config/otty/views/otty-snippets-view`, which is both insta
 - `otty-snippets-view`, `.bak`, `.version` are the binary Otty runs and its install record. `go build -o otty-snippets-view .` here replaces it.
 - `groups.json` and `trash/` are the user's real groups, assignments, colors and deleted recipes.
 - Running the binary, or a test that skips the env setup, without `OTTY_RECIPES_DIR` and `SNIPPETS_HOME` reads and writes the real `~/.config/otty/recipes` and this `groups.json`.
-- `release.sh` / `install.sh --from dev` rewrite `details-view` in Otty's config, reload it and stop the running view. That is the intended dev loop, but it acts on the user's running app.
+- `release.sh` / `install.sh --from dev` rewrite `details-view` in Otty's config, reload it and stop the running view. That is the intended dev loop, but it acts on the user's running app. `otty-snippets-view init` also writes the real config unless given `--config-file <tmp>` or `--print`; and run as a `go build` output elsewhere it points the panel at that file.
+- `details-view` is a list key (one view per line in `otty config get`, the whole list in `otty config set`). Anything that writes it must change only the snippets entry and write the other views back; `otty config unset details-view` removes all of them.
 
 Never enable or change `ipc-allow-send-keys` or `ipc-allow-sensitive-sessions`. They are the user's security switches; install.sh and SETUP-PROMPT.md only remind about them.
 

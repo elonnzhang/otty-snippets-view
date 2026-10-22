@@ -11,13 +11,14 @@ Run the installer from the project's default branch, then check what it did:
 1. Install
    curl -fsSL https://raw.githubusercontent.com/elonnzhang/otty-snippets-view/main/install.sh | sh
 
-   It downloads the latest release, places the binary in ~/.config/otty/views/otty-snippets-view/,
-   writes `details-view` with `otty config set`, reloads the config and stops any old view.
-   If it refuses because details-view belongs to another tool, stop and ask me — don't add --force.
+   It downloads the latest release, places the binary in ~/.config/otty/views/otty-snippets-view,
+   adds or updates its entry in the `details-view` list with `otty config set` (the other details
+   views stay as they are), reloads the config and stops any old view.
 
 2. Verify
    - otty config validate   (must pass)
-   - otty config get details-view   (must contain command="/…/otty-snippets-view")
+   - otty config get details-view   (one line must contain command="/…/otty-snippets-view", and
+     the views that were there before must still be listed)
    - Tell me that Otty does not restart a running view, so I have to press ⌘⇧R twice
      (close and reopen the details panel).
 
