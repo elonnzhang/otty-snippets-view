@@ -77,6 +77,12 @@ The selected tab and the detail height are saved in `groups.json`.
 | `/` | Search; `Esc` clears it |
 | `R` / `⌃R` | Reload from disk |
 | `↑↓` `jk` `PgUp/PgDn` `g/G` `←→` | Navigate; left/right also fold and unfold |
+| click empty space | clear the selection (the detail area empties) |
+| click a hint | run the key it names |
+
+From a cleared selection, `↓` selects the first row and `↑` the last one.
+
+New and rename group, and new and edit snippet, open a box in the middle of the screen; the list stays visible around it. A click outside the box cancels, and a name that is rejected keeps the box open with the reason inside it.
 
 Form: `Tab` / `⇧Tab` switches fields, `⌃S` saves, `Esc` cancels. Alias is required and cannot contain spaces.
 
