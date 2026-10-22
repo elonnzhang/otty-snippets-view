@@ -59,6 +59,7 @@ The selected tab and the detail height are saved in `groups.json`.
 | `e` | Edit snippet; on a group, rename it |
 | `m` | Move to a group (menu); on a group header, move the group under another |
 | `M` | New sub-group under the selected group |
+| `c` | Color of the selected snippet or group (`1`â€“`6` pick, `0` clears); also in the right-click menu |
 | drag | Drag a snippet onto a group (Groups tab) |
 | `d` / `x` / `Delete` | Delete; the file moves to `trash/` |
 | `n` / `r` | New group / rename group |
@@ -112,7 +113,7 @@ Herdr has no widget slot in its own sidebar, so the plugin opens a split pane â€
 ## Files
 
 - `~/.config/otty/recipes/*.ottyrecipe`: the snippets themselves, the same files Otty's Recipes settings edit. Writes are atomic and keep Otty's format. A file with fields this tool doesn't know is never rewritten; edit it in Otty instead.
-- `groups.json`: groups, manual assignments (`"none"` pins a snippet to Ungrouped) and UI state. A corrupt file is renamed to `groups.json.bad`.
+- `groups.json`: groups, manual assignments (`"none"` pins a snippet to Ungrouped), item colors and UI state. A corrupt file is renamed to `groups.json.bad`.
 - `trash/`: deleted recipes, named `<timestamp>-<id>.ottyrecipe`.
 
 Changes made in Otty's Recipes settings are picked up within a second.

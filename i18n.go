@@ -64,6 +64,7 @@ func tr(k string) string {
 }
 
 var dict = map[string][2]string{
+	"h.color": {"color", "颜色"},
 	"h.input": {"input", "输入"}, "h.filter": {"filter", "过滤"},
 	"h.select": {"select", "选择"}, "h.done": {"done", "完成"}, "h.clear": {"clear", "清除"},
 	"h.save": {"save", "保存"}, "h.cancel": {"cancel", "取消"}, "h.move": {"move", "移到"},
@@ -144,6 +145,15 @@ var dict = map[string][2]string{
 	"ctx.newsnip":    {"New snippet", "新建 snippet"},
 	"ctx.newgroup":   {"New group", "新建分组"},
 	"ctx.subgroup":   {"New sub-group", "新建子分组"},
+	"ctx.color":      {"Color…", "颜色…"},
+	"color.red":      {"Red", "红"},
+	"color.green":    {"Green", "绿"},
+	"color.yellow":   {"Yellow", "黄"},
+	"color.blue":     {"Blue", "蓝"},
+	"color.magenta":  {"Magenta", "紫"},
+	"color.cyan":     {"Cyan", "青"},
+	"color.clear":    {"No color", "无颜色"},
+	"color.none":     {"✗ select a snippet or group first", "✗ 先选中一个 snippet 或分组"},
 	"ctx.rename":     {"Rename", "重命名"},
 	"send.ran":       {"✓ ran", "✓ 已执行"},
 	"send.filled":    {"✓ filled in", "✓ 已填入"},

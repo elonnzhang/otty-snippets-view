@@ -192,6 +192,7 @@ type Group struct {
 	Name      string `json:"name"`
 	Collapsed bool   `json:"collapsed"`
 	Parent    string `json:"parent,omitempty"` // "" = top level
+	Color     string `json:"color,omitempty"`  // see itemColors; "" = default
 }
 
 // UIState is what the view remembers between runs.
@@ -204,6 +205,7 @@ type Meta struct {
 	Version int               `json:"version"`
 	Groups  []Group           `json:"groups"`
 	Assign  map[string]string `json:"assign"`
+	Colors  map[string]string `json:"colors,omitempty"` // snippet id -> color name
 	UI      UIState           `json:"ui"`
 
 	auto     map[string]string // snippet id -> group from its "[group]-" name prefix
@@ -228,6 +230,7 @@ func loadMeta() *Meta {
 	if got.Assign != nil {
 		m.Assign = got.Assign
 	}
+	m.Colors = got.Colors
 	return m
 }
 

@@ -58,6 +58,7 @@ details-view = 'id="snippets" kind="tui" title="Snippets" icon="file" command="/
 | `a` | 新建 snippet（在「分组」里会建到当前组） |
 | `e` | 编辑 snippet；在组上是重命名 |
 | `m` | 用菜单移到某个组；在分组上是把分组移到别的组下 |
+| `c` | 设置选中 snippet 或分组的颜色（`1`–`6` 选色，`0` 清除），右键菜单里也有 |
 | `M` | 在选中的分组下新建子分组 |
 | 拖动 | 把 snippet 拖到组上（「分组」里可用） |
 | `d` / `x` / `Delete` | 删除，文件移入 `trash/` |
@@ -112,7 +113,7 @@ Herdr 没有在自己侧边栏内放 widget 的接口，所以插件打开的是
 ## 文件
 
 - `~/.config/otty/recipes/*.ottyrecipe`：snippet 本身，跟 Otty 设置里 Recipes 编辑的是同一批文件。写入是原子的，格式和 Otty 保持一致。含未知字段的文件不会被改写，请到 Otty 里编辑。
-- `groups.json`：分组、手动分配（`"none"` 表示固定在未分组）和界面状态。文件损坏时会被改名为 `groups.json.bad`。
+- `groups.json`：分组、手动分配（`"none"` 表示固定在未分组）、颜色和界面状态。文件损坏时会被改名为 `groups.json.bad`。
 - `trash/`：删掉的 recipe，文件名是 `<时间戳>-<id>.ottyrecipe`。
 
 在 Otty 的 Recipes 设置里改了 snippet，一秒内这里就会更新。

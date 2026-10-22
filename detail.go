@@ -61,13 +61,13 @@ func (m *model) hintSet() []hint {
 	if r != nil && r.group {
 		h := []hint{{"⏎", tr("h.fold")}, {"n", tr("h.newg")}}
 		if r.gid != "" {
-			h = append(h, hint{"r", tr("h.rename")}, hint{"m", tr("h.moveg")}, hint{"d", tr("h.del")}, hint{"[ ]", tr("h.sort")})
+			h = append(h, hint{"r", tr("h.rename")}, hint{"m", tr("h.moveg")}, hint{"c", tr("h.color")}, hint{"d", tr("h.del")}, hint{"[ ]", tr("h.sort")})
 		}
 		h = append(h, hint{"M", tr("h.subg")})
 		return append(h, hint{"Tab", tr("h.tab")}, hint{"/", tr("h.search")})
 	}
 	h := []hint{{"⏎", tr("h.run")}, {"o", tr("h.fill")}, {"y", tr("h.copy")}, {"a", tr("h.new")}, {"e", tr("h.edit")},
-		{"m", tr("h.move")}, {"d", tr("h.delete")}}
+		{"m", tr("h.move")}, {"c", tr("h.color")}, {"d", tr("h.delete")}}
 	if m.tab == tabGroup {
 		h = append(h, hint{"n", tr("h.newg")})
 	}

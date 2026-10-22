@@ -149,6 +149,8 @@ func (m *model) onKey(k tea.KeyMsg) tea.Cmd {
 		}
 	case "m":
 		m.openMenu(isG)
+	case "c":
+		m.openColorMenu(m.sel, 2, m.layout().listTop+m.sel-m.scroll)
 	case "M":
 		if isG && r.gid != "" {
 			m.startChildPrompt(r.gid, "")

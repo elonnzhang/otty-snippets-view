@@ -279,6 +279,12 @@ func (m *Meta) prune(snips []Snippet) bool {
 			changed = true
 		}
 	}
+	for k := range m.Colors {
+		if !live[k] {
+			delete(m.Colors, k)
+			changed = true
+		}
+	}
 	return changed
 }
 

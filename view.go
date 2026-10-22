@@ -209,20 +209,23 @@ func (m *model) rowLine(i int) string {
 		if r.folded {
 			arrow = "▸"
 		}
-		line = strings.Repeat("  ", r.depth) + stGroup.Render(fitw(fmt.Sprintf("%s %s  (%d)", arrow, r.name, r.count), m.w-2*r.depth))
+		line = strings.Repeat("  ", r.depth) + m.paint(r, fitw(fmt.Sprintf("%s %s  (%d)", arrow, r.name, r.count), m.w-2*r.depth), stGroup)
 	case m.tab == tabGroup:
-		line = fitw(strings.Repeat("  ", r.depth+1)+m.shortName(r)+stDim.Render("  "+oneLine(r.snip.Text)), m.w)
+		line = fitw(strings.Repeat("  ", r.depth+1)+m.paint(r, m.shortName(r), lipgloss.NewStyle())+stDim.Render("  "+oneLine(r.snip.Text)), m.w)
 	default:
 		tag := ""
 		if r.gid != "" {
 			tag = stTag.Render(" " + m.meta.groupName(r.gid))
 		}
-		line = fitw(" "+m.shortName(r)+tag+stDim.Render("  "+oneLine(r.snip.Text)), m.w)
+		line = fitw(" "+m.paint(r, m.shortName(r), lipgloss.NewStyle())+tag+stDim.Render("  "+oneLine(r.snip.Text)), m.w)
 	}
 	if d := m.drag; d != nil && d.active && d.hover == i {
 		return stDrop.Render(ansi.Strip(line))
 	}
 	if i == m.sel {
+		if c := m.itemColor(r); c != "" {
+			return stSel.Foreground(colorValue(c)).Render(ansi.Strip(line))
+		}
 		return stSel.Render(ansi.Strip(line))
 	}
 	return line

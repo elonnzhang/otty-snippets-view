@@ -12,7 +12,10 @@ import (
 // Every item is a shortcut that already exists: picking one runs that key on
 // the row that was right-clicked, so the menu cannot drift from the keyboard.
 
-type ctxItem struct{ key, label string }
+type ctxItem struct {
+	key, label string
+	do         func() // set: run this instead of replaying key
+}
 
 type ctxMenu struct {
 	x, y  int // top-left corner of the box on screen
@@ -25,15 +28,17 @@ func (m *model) openCtx(r *row, x, y int) {
 	var items []ctxItem
 	switch {
 	case r == nil:
-		items = []ctxItem{{"n", tr("ctx.newgroup")}, {"a", tr("ctx.newsnip")}}
+		items = []ctxItem{{key: "n", label: tr("ctx.newgroup")}, {key: "a", label: tr("ctx.newsnip")}}
 	case !r.group:
-		items = []ctxItem{{"o", tr("ctx.fill")}, {"e", tr("ctx.edit")}, {"m", tr("ctx.move")},
-			{"d", tr("ctx.delete")}, {"a", tr("ctx.newsnip")}, {"n", tr("ctx.newgroup")}}
+		items = []ctxItem{{key: "o", label: tr("ctx.fill")}, {key: "e", label: tr("ctx.edit")},
+			{key: "m", label: tr("ctx.move")}, {key: "c", label: tr("ctx.color")}, {key: "d", label: tr("ctx.delete")},
+			{key: "a", label: tr("ctx.newsnip")}, {key: "n", label: tr("ctx.newgroup")}}
 	case r.gid != "":
-		items = []ctxItem{{"M", tr("ctx.subgroup")}, {"r", tr("ctx.rename")}, {"m", tr("ctx.move")},
-			{"d", tr("ctx.delete")}, {"a", tr("ctx.newsnip")}, {"n", tr("ctx.newgroup")}}
+		items = []ctxItem{{key: "M", label: tr("ctx.subgroup")}, {key: "r", label: tr("ctx.rename")},
+			{key: "m", label: tr("ctx.move")}, {key: "c", label: tr("ctx.color")}, {key: "d", label: tr("ctx.delete")},
+			{key: "a", label: tr("ctx.newsnip")}, {key: "n", label: tr("ctx.newgroup")}}
 	default: // Ungrouped can't be renamed, moved or deleted
-		items = []ctxItem{{"n", tr("ctx.newgroup")}, {"a", tr("ctx.newsnip")}}
+		items = []ctxItem{{key: "n", label: tr("ctx.newgroup")}, {key: "a", label: tr("ctx.newsnip")}}
 	}
 	if m.tab == tabList {
 		// The flat list shows no groups, so creating one there makes no sense.
@@ -54,6 +59,10 @@ func (m *model) runCtx(i int) tea.Cmd {
 	c := m.ctx
 	m.ctx, m.mode = nil, modeNormal
 	if c == nil || i < 0 || i >= len(c.items) {
+		return nil
+	}
+	if do := c.items[i].do; do != nil {
+		do()
 		return nil
 	}
 	return m.onKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(c.items[i].key)})

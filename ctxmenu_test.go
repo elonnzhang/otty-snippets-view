@@ -55,7 +55,7 @@ func TestContextMenuGroup(t *testing.T) {
 	for _, it := range m.ctx.items {
 		keys = append(keys, it.key)
 	}
-	if strings.Join(keys, "") != "Mrmdan" {
+	if strings.Join(keys, "") != "Mrmcdan" {
 		t.Fatalf("group items = %q", keys)
 	}
 	// The box keeps every line at the screen width.
@@ -108,7 +108,7 @@ func TestContextMenuHover(t *testing.T) {
 	}
 	x, y, _, _ := m.ctxBox()
 	m.Update(tea.MouseMsg{X: x + 3, Y: y + 4, Button: tea.MouseButtonNone, Action: tea.MouseActionMotion})
-	if m.ctx.sel != 3 || m.ctx.items[3].key != "d" {
+	if m.ctx.sel != 3 || m.ctx.items[3].key != "c" {
 		t.Fatalf("hover sel = %d", m.ctx.sel)
 	}
 	// Moving off the items keeps the last highlight.
