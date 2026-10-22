@@ -50,6 +50,8 @@ func (m *model) hintSet() []hint {
 		return []hint{{"⏎", tr("h.save")}, {"Esc", tr("h.cancel")}}
 	case modeMenu:
 		return []hint{{"↑↓", tr("h.select")}, {"⏎/click", tr("h.move")}, {"Esc", tr("h.cancel")}}
+	case modeContext:
+		return []hint{{"↑↓", tr("h.select")}, {"⏎/click", tr("h.ok")}, {"Esc", tr("h.cancel")}}
 	case modeConfirm:
 		return []hint{{"y", tr("h.ok")}, {pick("other key", "其他键"), tr("h.cancel")}}
 	case modeForm:

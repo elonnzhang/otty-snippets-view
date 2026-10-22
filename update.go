@@ -43,6 +43,8 @@ func (m *model) onKey(k tea.KeyMsg) tea.Cmd {
 	case modeMenu:
 		m.keyMenu(k.String())
 		return nil
+	case modeContext:
+		return m.keyCtx(k.String())
 	case modeConfirm:
 		m.keyConfirm(k.String())
 		return nil
@@ -353,6 +355,8 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 	case modeMenu:
 		m.mouseMenu(e, l)
 		return nil
+	case modeContext:
+		return m.mouseCtx(e)
 	case modeForm:
 		if press && left {
 			m.form.focusAt(e.Y)
@@ -383,6 +387,10 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 		}
 	case press:
 		if !inList {
+			// Right-click on the empty part of the list: menu for new things only.
+			if e.Button == tea.MouseButtonRight && e.Y >= l.listTop && e.Y < l.listTop+l.listH {
+				m.openCtx(nil, e.X, e.Y)
+			}
 			return nil
 		}
 		m.sel = idx
@@ -399,9 +407,7 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 				}
 			}
 		case tea.MouseButtonRight:
-			if !r.group {
-				m.send(false)
-			}
+			m.openCtx(&r, e.X, e.Y)
 		}
 	case e.Action == tea.MouseActionRelease:
 		m.release(idx, inList)

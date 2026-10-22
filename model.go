@@ -18,6 +18,7 @@ const (
 	modeMenu    // move snippet to group
 	modeConfirm // delete group / snippet
 	modeForm    // new / edit snippet
+	modeContext // right-click menu
 )
 
 type tab int
@@ -81,6 +82,7 @@ type model struct {
 	menuGroup string   // group being moved
 	menuItems []menuItem
 	menuSel   int
+	ctx       *ctxMenu // right-click menu, when mode is modeContext
 
 	prompt       textinput.Model
 	promptGroup  string // group being renamed; "" for a new one

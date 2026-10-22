@@ -124,6 +124,9 @@ func (m *model) View() string {
 	if len(lines) > m.h {
 		lines = lines[:m.h]
 	}
+	if m.mode == modeContext {
+		m.drawCtx(lines)
+	}
 	return strings.Join(lines, "\n")
 }
 

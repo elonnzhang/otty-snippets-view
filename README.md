@@ -52,7 +52,8 @@ The selected tab and the detail height are saved in `groups.json`.
 | Key | Action |
 | --- | --- |
 | `⏎` / double-click | Run in the focused pane (on a group: fold) |
-| `o` / right-click | Fill in without running |
+| `o` | Fill in without running |
+| right-click | Context menu: on a snippet fill in / edit / move / delete / new; on a group new sub-group / rename / move / delete; on empty space new group / snippet |
 | `y` | Copy to the clipboard |
 | `a` | New snippet (in the Groups tab it goes into the current group) |
 | `e` | Edit snippet; on a group, rename it |

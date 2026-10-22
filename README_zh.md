@@ -52,7 +52,8 @@ details-view = 'id="snippets" kind="tui" title="Snippets" icon="file" command="/
 | 键 | 作用 |
 | --- | --- |
 | `⏎` / 双击 | 在聚焦的 pane 里执行（在组上是折叠） |
-| `o` / 右键 | 只填入，不执行 |
+| `o` | 只填入，不执行 |
+| 右键 | 右键菜单：snippet 上是填入 / 编辑 / 移动 / 删除 / 新建；分组上是新建子分组 / 重命名 / 移动 / 删除；空白处是新建分组 / snippet |
 | `y` | 复制到剪贴板 |
 | `a` | 新建 snippet（在「分组」里会建到当前组） |
 | `e` | 编辑 snippet；在组上是重命名 |
