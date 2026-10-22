@@ -83,6 +83,7 @@ type model struct {
 	menuItems []menuItem
 	menuSel   int
 	ctx       *ctxMenu // right-click menu, when mode is modeContext
+	hover     bool     // terminal reports pointer motion without a button
 
 	prompt       textinput.Model
 	promptGroup  string // group being renamed; "" for a new one

@@ -74,11 +74,22 @@ func (m *model) keyCtx(k string) tea.Cmd {
 }
 
 func (m *model) mouseCtx(e tea.MouseMsg) tea.Cmd {
-	if e.Action != tea.MouseActionPress {
-		return nil
-	}
 	x, y, w, h := m.ctxBox()
 	inside := e.X >= x && e.X < x+w && e.Y > y && e.Y < y+h-1
+	switch {
+	case e.Button == tea.MouseButtonWheelUp:
+		return m.keyCtx("up")
+	case e.Button == tea.MouseButtonWheelDown:
+		return m.keyCtx("down")
+	case e.Action == tea.MouseActionMotion:
+		// The highlight follows the pointer; off the items it stays put.
+		if inside {
+			m.ctx.sel = e.Y - y - 1
+		}
+		return nil
+	case e.Action != tea.MouseActionPress:
+		return nil
+	}
 	switch {
 	case inside && e.Button == tea.MouseButtonLeft:
 		return m.runCtx(e.Y - y - 1)

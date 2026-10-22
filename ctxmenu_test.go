@@ -97,3 +97,27 @@ func TestContextMenuSnippetAndEmpty(t *testing.T) {
 		t.Fatal("Esc did not close the menu")
 	}
 }
+
+func TestContextMenuHover(t *testing.T) {
+	m := ctxTestModel(t)
+	l := m.layout()
+	gi := rowIndex(m, func(r row) bool { return r.group && r.gid != "" })
+	m.Update(tea.MouseMsg{X: 5, Y: l.listTop + gi - m.scroll, Button: tea.MouseButtonRight, Action: tea.MouseActionPress})
+	if !m.hover {
+		t.Fatal("opening the menu should turn on pointer motion reports")
+	}
+	x, y, _, _ := m.ctxBox()
+	m.Update(tea.MouseMsg{X: x + 3, Y: y + 4, Button: tea.MouseButtonNone, Action: tea.MouseActionMotion})
+	if m.ctx.sel != 3 || m.ctx.items[3].key != "d" {
+		t.Fatalf("hover sel = %d", m.ctx.sel)
+	}
+	// Moving off the items keeps the last highlight.
+	m.Update(tea.MouseMsg{X: 0, Y: 0, Button: tea.MouseButtonNone, Action: tea.MouseActionMotion})
+	if m.ctx.sel != 3 {
+		t.Fatalf("sel moved off-menu to %d", m.ctx.sel)
+	}
+	m.Update(tea.KeyMsg{Type: tea.KeyEsc})
+	if m.hover {
+		t.Fatal("closing the menu should go back to motion-while-pressed")
+	}
+}

@@ -27,11 +27,26 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Type == tea.KeyCtrlC {
 			return m, tea.Quit
 		}
-		return m, m.onKey(msg)
+		return m, tea.Batch(m.onKey(msg), m.mouseMode())
 	case tea.MouseMsg:
-		return m, m.onMouse(msg)
+		return m, tea.Batch(m.onMouse(msg), m.mouseMode())
 	}
 	return m, nil
+}
+
+// mouseMode asks the terminal for plain pointer motion while the right-click
+// menu is open, so its highlight follows the pointer, and drops back to
+// motion-while-pressed afterwards; nil when nothing changes.
+func (m *model) mouseMode() tea.Cmd {
+	want := m.mode == modeContext
+	if want == m.hover {
+		return nil
+	}
+	m.hover = want
+	if want {
+		return tea.EnableMouseAllMotion
+	}
+	return tea.EnableMouseCellMotion
 }
 
 func (m *model) onKey(k tea.KeyMsg) tea.Cmd {
