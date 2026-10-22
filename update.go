@@ -274,10 +274,12 @@ func (m *model) keyMenu(k string) {
 }
 
 func (m *model) keyConfirm(k string) {
-	m.mode = modeNormal
+	// Only y deletes; any other key cancels, like a click outside the box.
 	if k != "y" && k != "Y" {
+		m.mode, m.confirmGroup, m.confirmSnip = modeNormal, "", ""
 		return
 	}
+	m.mode = modeNormal
 	if m.confirmGroup != "" {
 		name := m.meta.groupName(m.confirmGroup)
 		kids := m.meta.descendants(m.confirmGroup)
@@ -292,6 +294,7 @@ func (m *model) keyConfirm(k string) {
 	} else {
 		m.deleteSnippet(m.confirmSnip)
 	}
+	m.confirmGroup, m.confirmSnip = "", ""
 }
 
 func (m *model) keyForm(k tea.KeyMsg) tea.Cmd {
@@ -389,6 +392,29 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 		return nil
 	case modeContext:
 		return m.mouseCtx(e)
+	case modeConfirm:
+		// Like the other dialogs: a click outside the box cancels. Inside, the
+		// buttons on its last row answer; the rest of the box does nothing.
+		// The hint row is clickable too and carries the same answers.
+		if !press || !left {
+			return nil
+		}
+		if k := m.confirmButtonAt(e.X, e.Y); k != "" {
+			m.keyConfirm(k)
+			return nil
+		}
+		if h, ok := m.hintAt(e.X, e.Y); ok {
+			if h.key == "y" {
+				m.keyConfirm("y")
+			} else {
+				m.keyConfirm("esc")
+			}
+			return nil
+		}
+		if !m.insideConfirm(e) {
+			m.keyConfirm("esc")
+		}
+		return nil
 	case modeForm:
 		// Like the group dialog: a click inside picks the field under it (in
 		// the body, also the character), a click outside cancels the form. The
@@ -424,7 +450,7 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 			m.promptMsg = ""
 		}
 		return nil
-	case modeConfirm, modeSearch:
+	case modeSearch:
 		return nil
 	}
 
@@ -496,6 +522,12 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 func (m *model) ctxClickOutsideDialog(e tea.MouseMsg) bool {
 	x, y, w := m.dialogBox()
 	return e.X < x || e.X >= x+w || e.Y < y || e.Y >= y+m.dialogHeight()
+}
+
+// insideConfirm reports whether e lands on the delete confirmation box.
+func (m *model) insideConfirm(e tea.MouseMsg) bool {
+	x, y, w, body := m.confirmBox()
+	return e.X >= x && e.X < x+w && e.Y >= y && e.Y < y+confirmHeight(body)
 }
 
 // clickOutsideForm reports whether e lands outside the snippet form.

@@ -7,6 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -93,15 +94,13 @@ func (m *model) hints() []string {
 	return rows[:]
 }
 
-// status is the prompt, confirm question or a recent message, shown on the
-// line just above the hints so the keys stay visible; "" when there is none.
+// status is a recent message, shown on the line just above the hints so the
+// keys stay visible; "" when there is none. The prompt and the delete
+// confirmation carry their own text inside their box.
 func (m *model) status() string {
 	switch {
-	case m.mode == modePrompt:
-		// The dialog carries the input and its own error line.
+	case m.mode == modePrompt || m.mode == modeConfirm:
 		return ""
-	case m.mode == modeConfirm:
-		return stErr.Render(m.confirmText())
 	case m.msg != "" && time.Now().Before(m.msgUntil):
 		st := stErr
 		if strings.HasPrefix(m.msg, "✓") {
@@ -237,7 +236,11 @@ func (m *model) clickHint(h hint) tea.Cmd {
 	return m.onKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(h.key)})
 }
 
-func (m *model) confirmText() string {
+// confirmText is the delete confirmation: the title asks the question, the
+// first body line is what goes, quoted, and the second says what the delete
+// touches beyond it. The name gets a line of its own so a long one wraps
+// instead of pushing the question out of the box.
+func (m *model) confirmText() []string {
 	if m.confirmGroup != "" {
 		n := 0
 		for _, s := range m.snips {
@@ -245,16 +248,97 @@ func (m *model) confirmText() string {
 				n++
 			}
 		}
+		lines := []string{quoted(m.meta.groupName(m.confirmGroup))}
 		if kids := m.meta.descendants(m.confirmGroup); kids > 0 {
-			return fmt.Sprintf(tr("group.del.tree"), m.meta.groupName(m.confirmGroup), n, kids)
+			return append(lines, fmt.Sprintf(tr("confirm.group.tree"), n, kids))
 		}
-		return fmt.Sprintf(tr("group.del"), m.meta.groupName(m.confirmGroup), n)
+		return append(lines, fmt.Sprintf(tr("confirm.group.body"), n))
 	}
 	name := m.confirmSnip
 	if s := m.findSnip(m.confirmSnip); s != nil {
 		name = s.Name
 	}
-	return fmt.Sprintf(tr("snip.del"), name)
+	return []string{quoted(name), tr("confirm.snip.body")}
+}
+
+// quoted wraps a name the way the rest of the UI does in each language.
+func quoted(s string) string { return pick(`"`+s+`"`, "「"+s+"」") }
+
+// drawConfirm paints the delete confirmation over the finished screen: the
+// question sits in a box of its own, like the other dialogs, instead of on the
+// status line above the hints where it is easy to miss.
+func (m *model) drawConfirm(lines []string) {
+	x, y, w, body := m.confirmBox()
+	inner := w - 2
+	title := tr("confirm.snip")
+	if m.confirmGroup != "" {
+		title = tr("confirm.group")
+	}
+	cells := []string{stLabel.Render("┌" + strings.Repeat("─", inner) + "┐")}
+	cells = append(cells, boxCell(stBold.Render(title), inner))
+	for i, l := range body {
+		st := stDim
+		if i == 0 {
+			st = stBold
+		}
+		cells = append(cells, boxCell(st.Render(l), inner))
+	}
+	var row strings.Builder
+	for i, b := range confirmButtons() {
+		if i > 0 {
+			row.WriteString(strings.Repeat(" ", confirmGap))
+		}
+		row.WriteString(stKey.Render(b.key) + " " + b.st.Render(b.label))
+	}
+	cells = append(cells, boxCell("", inner), boxCell(row.String(), inner))
+	cells = append(cells, stLabel.Render("└"+strings.Repeat("─", inner)+"┘"))
+	paintBox(lines, x, y, w, cells)
+}
+
+// confirmButton is one answer on the confirmation's last row: drawn as its key
+// and a label, clickable over both.
+type confirmButton struct {
+	key, label string
+	st         lipgloss.Style
+	answer     string // the key a click replays
+}
+
+const confirmGap = 3 // cells between the buttons
+
+func confirmButtons() []confirmButton {
+	return []confirmButton{
+		{key: "y", label: tr("confirm.yes"), st: stErr, answer: "y"},
+		{key: tr("confirm.anykey"), label: tr("h.cancel"), st: stDim, answer: "esc"},
+	}
+}
+
+// confirmButtonAt returns the key the button under screen cell (cx, cy)
+// answers with, or "" when the cell is not on a button.
+func (m *model) confirmButtonAt(cx, cy int) string {
+	x, y, _, body := m.confirmBox()
+	if cy != y+confirmHeight(body)-2 { // the row above the bottom border
+		return ""
+	}
+	col := x + 1 + dialogPad
+	for _, b := range confirmButtons() {
+		w := ansi.StringWidth(b.key) + 1 + ansi.StringWidth(b.label)
+		if cx >= col && cx < col+w {
+			return b.answer
+		}
+		col += w + confirmGap
+	}
+	return ""
+}
+
+// paintBox lays the rows of a dialog over the finished screen at x, y.
+func paintBox(lines []string, x, y, w int, cells []string) {
+	for i, c := range cells {
+		row := y + i
+		if row < 0 || row >= len(lines) {
+			continue
+		}
+		lines[row] = ansi.Truncate(lines[row], x, "") + c + ansi.TruncateLeft(lines[row], x+w, "")
+	}
 }
 
 // ---- form -------------------------------------------------------------------

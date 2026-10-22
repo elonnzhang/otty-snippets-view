@@ -120,6 +120,7 @@ const (
 	dialogW   = 44 // the group-name box: outer width, clamped to the terminal
 	dialogPad = 1
 	formW     = 72 // the snippet form: outer width, clamped to the terminal
+	confirmW  = 56 // the delete confirmation: outer width, clamped to the terminal
 )
 
 // dialogBox is where the group-name dialog sits: centred horizontally, a
@@ -147,6 +148,30 @@ func (m *model) dialogInputWidth() int {
 	label := max(ansi.StringWidth(tr("prompt.new")), ansi.StringWidth(tr("prompt.ren")))
 	return max(4, w-2-2*dialogPad-label)
 }
+
+// confirmBox is where the delete confirmation sits: centred like the other
+// dialogs, with the question as its title, what the delete touches as its
+// body and the keys that answer it on the last row. The body wraps to the box
+// width, so a long name still fits.
+func (m *model) confirmBox() (x, y, w int, body []string) {
+	w = max(16, min(confirmW, m.w-2))
+	inner := w - 2 - 2*dialogPad
+	for _, l := range m.confirmText() {
+		for _, part := range strings.Split(ansi.Wrap(l, inner, ""), "\n") {
+			body = append(body, strings.TrimRight(part, " "))
+		}
+	}
+	h := confirmHeight(body)
+	x = max(0, (m.w-w)/2)
+	y = max(0, (m.h-h)/2-1)
+	if bottom := m.h - hintRows; y+h > bottom {
+		y = max(0, bottom-h)
+	}
+	return x, y, w, body
+}
+
+// confirmHeight: top border, title, body, a blank row, the keys, bottom border.
+func confirmHeight(body []string) int { return 5 + len(body) }
 
 // formBox is where the snippet form sits: centred, as wide as the terminal
 // allows and as tall as the body needs. It stays below the tab bar and above

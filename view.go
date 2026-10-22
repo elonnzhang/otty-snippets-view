@@ -131,6 +131,9 @@ func (m *model) View() string {
 	if m.mode == modeForm {
 		m.drawForm(lines)
 	}
+	if m.mode == modeConfirm {
+		m.drawConfirm(lines)
+	}
 	return strings.Join(lines, "\n")
 }
 

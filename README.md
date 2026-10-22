@@ -53,7 +53,7 @@ From top to bottom:
 1. Tab bar: **List** (flat, each row tagged with its group) and **Groups** (tree by group, foldable, for managing groups). Tab, `1`/`2` or a mouse click switches tabs.
 2. Snippet list.
 3. Detail area: name, alias, group and the full text with syntax highlighting. The language is guessed, falling back to shell. Drag the top border (`── detail ═══ ──`) with the mouse to resize it, or press `+` / `-`.
-4. Key hints, in two rows: each key with its tip directly below. Status messages and confirmations get the line just above the hints, so the keys always stay visible.
+4. Key hints, in two rows: each key with its tip directly below. Status messages get the line just above the hints, so the keys always stay visible.
 
 The selected tab and the detail height are saved in `groups.json`.
 
@@ -71,7 +71,7 @@ The selected tab and the detail height are saved in `groups.json`.
 | `M` | New sub-group under the selected group |
 | `c` | Color of the selected snippet or group (`1`–`6` pick, `0` clears); also in the right-click menu |
 | drag | Drag a snippet onto a group (Groups tab) |
-| `d` / `x` / `Delete` | Delete; the file moves to `trash/` |
+| `d` / `x` / `Delete` | Delete, after a confirmation box (`y` deletes, any other key cancels); the file moves to `trash/` |
 | `n` / `r` | New group / rename group |
 | `[` / `]` | Reorder groups |
 | `/` | Search; `Esc` clears it |
@@ -82,7 +82,7 @@ The selected tab and the detail height are saved in `groups.json`.
 
 From a cleared selection, `↓` selects the first row and `↑` the last one.
 
-New and rename group, and new and edit snippet, open a box in the middle of the screen; the list stays visible around it. A click outside the box cancels, and a name that is rejected keeps the box open with the reason inside it.
+New and rename group, new and edit snippet, and the delete confirmation open a box in the middle of the screen; the list stays visible around it. A click outside the box cancels, and a name that is rejected keeps the box open with the reason inside it.
 
 Form: `Tab` / `⇧Tab` switches fields, `⌃S` saves, `Esc` cancels. Alias is required and cannot contain spaces. A long body grows the box to at most two thirds of the screen and scrolls inside it beyond that (`↑`/`↓` mark what is out of view, the wheel scrolls it), and typing keeps the caret in view. Click anywhere in a field — name, alias or the body — to put the caret on that character and keep typing there.
 
