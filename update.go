@@ -404,9 +404,17 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 		}
 	case press:
 		if !inList {
-			// Right-click on the empty part of the list: menu for new things only.
-			if e.Button == tea.MouseButtonRight && e.Y >= l.listTop && e.Y < l.listTop+l.listH {
-				m.openCtx(nil, e.X, e.Y)
+			if e.Y >= l.listTop && e.Y < l.listTop+l.listH {
+				switch e.Button {
+				case tea.MouseButtonRight:
+					// Right-click on the empty part of the list: menu for new things only.
+					m.openCtx(nil, e.X, e.Y)
+				case tea.MouseButtonLeft:
+					// Left-click on empty space: drop the selection so the
+					// list (and the detail area beside it) is not tied to an
+					// item. Moving the pointer is not a click.
+					m.clearSel()
+				}
 			}
 			return nil
 		}
@@ -430,6 +438,16 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 		m.release(idx, inList)
 	}
 	return nil
+}
+
+func (m *model) clearSel() {
+	if m.sel < 0 {
+		return
+	}
+	m.sel = -1
+	m.lastClickID = "" // a cleared row is not a double-click target
+	m.drag, m.pressRow = nil, -1
+	m.fit() // resets the detail scroll; the divider now shows the placeholder
 }
 
 func (m *model) dragTo(y int, l layout) {

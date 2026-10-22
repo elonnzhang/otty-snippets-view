@@ -10,10 +10,16 @@ import (
 
 // ---- detail -----------------------------------------------------------------
 
+// detail is the area below the divider. With nothing selected it holds one dim
+// line rather than the last row's content.
 func (m *model) detail(n int) []string {
 	r := m.cur()
 	if r == nil {
-		return nil
+		// No rows at all: the list already says so, no placeholder needed.
+		if n <= 0 || len(m.rows) == 0 {
+			return nil
+		}
+		return []string{stDim.Render(tr("detail.none"))}
 	}
 	if r.group {
 		out := []string{stBold.Render(r.name) + stDim.Render("  "+fmt.Sprintf(tr("group.count"), r.count))}
@@ -58,7 +64,13 @@ func (m *model) hintSet() []hint {
 		return []hint{{"Tab", tr("h.next")}, {"⌃S", tr("h.save")}, {"Esc", tr("h.cancel")}}
 	}
 	r := m.cur()
-	if r != nil && r.group {
+	switch {
+	case r == nil:
+		if m.tab == tabGroup {
+			return []hint{{"a", tr("h.new")}, {"n", tr("h.newg")}, {"Tab", tr("h.tab")}, {"/", tr("h.find")}}
+		}
+		return []hint{{"a", tr("h.new")}, {"Tab", tr("h.tab")}, {"/", tr("h.find")}}
+	case r.group:
 		h := []hint{{"⏎", tr("h.fold")}, {"n", tr("h.newg")}}
 		if r.gid != "" {
 			h = append(h, hint{"r", tr("h.rename")}, hint{"m", tr("h.moveg")}, hint{"c", tr("h.color")}, hint{"d", tr("h.del")}, hint{"[ ]", tr("h.sort")})

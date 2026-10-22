@@ -85,6 +85,7 @@ var dict = map[string][2]string{
 	"group.count": {"%d snippets", "%d 个 snippet"},
 	"group.auto":  {"Snippets named [%s]-… join this group automatically", "名称以 [%s]- 开头的 snippet 会自动归入此组"},
 	"divider":     {" detail ", " 详情 "},
+	"detail.none": {"Nothing selected — click an item, or press a to create one", "未选中 — 点一个条目，或按 a 新建"},
 
 	"menu.title":         {`Move "%s" to:`, "移动「%s」到:"},
 	"menu.group.title":   {`Move group "%s" under:`, "移动分组「%s」到:"},

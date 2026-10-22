@@ -62,6 +62,8 @@ type model struct {
 	rows  []row
 	tab   tab
 
+	// sel is the selected row; -1 after a click on the empty part of the list,
+	// where down selects the first row and up the last.
 	sel, scroll, w, h int
 	detScroll         int
 	detKey            string // row the detail scroll belongs to
@@ -272,19 +274,40 @@ func (m *model) layout() layout {
 
 func (m *model) fit() {
 	lh := max(1, m.layout().listH)
-	m.sel = max(0, min(m.sel, len(m.rows)-1))
+	// sel -1 means nothing is selected (a click on the empty part of the list).
+	if m.sel >= 0 {
+		m.sel = min(m.sel, len(m.rows)-1)
+	}
 	m.scroll = max(0, min(m.scroll, len(m.rows)-lh))
-	if m.sel < m.scroll {
+	if m.sel >= 0 && m.sel < m.scroll {
 		m.scroll = m.sel
 	} else if m.sel >= m.scroll+lh {
 		m.scroll = m.sel - lh + 1
 	}
 	if r := m.cur(); r == nil || r.key() != m.detKey {
 		m.detScroll = 0
+		m.detKey = ""
 		if r != nil {
 			m.detKey = r.key()
 		}
 	}
 }
 
-func (m *model) moveSel(d int) { m.sel += d; m.fit() }
+func (m *model) moveSel(d int) {
+	if len(m.rows) == 0 {
+		return
+	}
+	if m.sel < 0 {
+		// Nothing is selected after a click on empty space: down starts at the
+		// top row, up starts at the bottom one.
+		if d > 0 {
+			m.sel = 0
+		} else {
+			m.sel = len(m.rows) - 1
+		}
+		m.fit()
+		return
+	}
+	m.sel = max(0, min(len(m.rows)-1, m.sel+d))
+	m.fit()
+}
