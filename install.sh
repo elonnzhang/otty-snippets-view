@@ -209,7 +209,7 @@ if [ "$do_config" = 1 ]; then
     case "$want" in
       *otty-snippets-view*|*'id="snippets"'*) ;;
       *)
-        [ "$force" = 1 ] || die "details-view belongs to something else; set FORCE=1 at the top of this script to replace it (--force can't come after a pipe):
+        [ "$force" = 1 ] || die "details-view belongs to something else; set FORCE=1 to replace it (the piped form cannot take --force):
   $want"
         ;;
     esac
