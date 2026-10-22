@@ -121,3 +121,21 @@ func TestContextMenuHover(t *testing.T) {
 		t.Fatal("closing the menu should go back to motion-while-pressed")
 	}
 }
+
+func TestContextMenuListTab(t *testing.T) {
+	m := ctxTestModel(t)
+	m.setTab(tabList)
+	l := m.layout()
+	si := rowIndex(m, func(r row) bool { return !r.group })
+	rightClick(m, 5, l.listTop+si-m.scroll)
+	for _, it := range m.ctx.items {
+		if it.key == "n" {
+			t.Fatalf("List tab snippet menu offers a new group: %+v", m.ctx.items)
+		}
+	}
+	m.onKey(tea.KeyMsg{Type: tea.KeyEsc})
+	rightClick(m, 5, l.listTop+len(m.rows))
+	if len(m.ctx.items) != 1 || m.ctx.items[0].key != "a" {
+		t.Fatalf("List tab empty-space menu = %+v", m.ctx.items)
+	}
+}

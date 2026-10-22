@@ -35,6 +35,16 @@ func (m *model) openCtx(r *row, x, y int) {
 	default: // Ungrouped can't be renamed, moved or deleted
 		items = []ctxItem{{"n", tr("ctx.newgroup")}, {"a", tr("ctx.newsnip")}}
 	}
+	if m.tab == tabList {
+		// The flat list shows no groups, so creating one there makes no sense.
+		kept := items[:0]
+		for _, it := range items {
+			if it.key != "n" {
+				kept = append(kept, it)
+			}
+		}
+		items = kept
+	}
 	m.ctx = &ctxMenu{x: x, y: y, items: items}
 	m.mode = modeContext
 }
