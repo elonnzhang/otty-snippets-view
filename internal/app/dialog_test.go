@@ -88,7 +88,7 @@ func TestGroupDialog(t *testing.T) {
 	if m.mode != modePrompt {
 		t.Fatalf("a click inside the dialog cancelled it: mode %v", m.mode)
 	}
-	click(m, 0, m.h-1)
+	click(m, 0, 2)
 	if m.mode != modeNormal {
 		t.Fatalf("a click outside the dialog did not cancel: mode %v", m.mode)
 	}
@@ -170,15 +170,75 @@ func TestHintClicks(t *testing.T) {
 		t.Fatalf("the Tab hint did not switch tabs: tab %v", m.tab)
 	}
 
-	// A form keeps its hint rows to itself... but a click outside the form
-	// box cancels it, and the hint rows are outside.
+	// A form's hint rows are clickable too: Tab moves on, ⌃S saves, Esc
+	// cancels. They sit outside the box but must not count as an outside click.
 	m.setTab(tabList)
 	m.onKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
 	if m.mode != modeForm {
 		t.Fatalf("a did not open the form: mode %v", m.mode)
 	}
 	click(m, hintColumn(m, "Tab"), m.h-hintRows)
+	if m.mode != modeForm || m.form.focus != 1 {
+		t.Fatalf("the Tab hint did not move to the next field: mode %v", m.mode)
+	}
+	click(m, hintColumn(m, "⌃S"), m.h-hintRows)
+	if m.mode != modeForm || m.formMsg == "" {
+		t.Fatalf("saving an empty form closed it: mode %v, msg %q", m.mode, m.formMsg)
+	}
+	click(m, hintColumn(m, "Esc"), m.h-hintRows+1)
+	if m.mode != modeNormal || m.form != nil {
+		t.Fatalf("the Esc hint did not cancel the form: mode %v", m.mode)
+	}
+
+	// A click outside the form box, off the hint rows, still cancels it.
+	m.onKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
+	click(m, 0, 2)
 	if m.mode != modeNormal || m.form != nil {
 		t.Fatalf("a click outside the form did not cancel it: mode %v", m.mode)
+	}
+}
+
+// Clicking ⌃S in the form saves the snippet, the same as pressing it.
+func TestFormSaveByHintClick(t *testing.T) {
+	m := ctxTestModel(t)
+	m.w, m.h = 80, 24
+	m.setTab(tabList)
+	m.onKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
+	for _, field := range []string{"echo", "hi", "echo hi"} {
+		for _, r := range field {
+			m.onKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+		}
+		m.onKey(tea.KeyMsg{Type: tea.KeyTab})
+	}
+	click(m, hintColumn(m, "⌃S"), m.h-hintRows)
+	if m.mode != modeNormal || m.form != nil {
+		t.Fatalf("clicking ⌃S left the form open: mode %v, msg %q", m.mode, m.formMsg)
+	}
+	var saved bool
+	for _, s := range loadSnippets() {
+		saved = saved || (s.Name == "echo" && s.Alias == "hi" && s.Text == "echo hi")
+	}
+	if !saved {
+		t.Fatal("clicking ⌃S did not write the snippet to the recipes folder")
+	}
+}
+
+// The group name box has the same hint rows: ⏎ saves, Esc cancels.
+func TestGroupDialogHintClicks(t *testing.T) {
+	m := ctxTestModel(t)
+	m.w, m.h = 70, 20
+	m.setTab(tabGroup)
+	m.onKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("n")})
+	for _, r := range "cli" {
+		m.onKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune{r}})
+	}
+	click(m, hintColumn(m, "⏎"), m.h-hintRows)
+	if m.mode != modeNormal || m.meta.findByName("cli") == nil {
+		t.Fatalf("clicking ⏎ did not create the group: mode %v", m.mode)
+	}
+	m.onKey(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("n")})
+	click(m, hintColumn(m, "Esc"), m.h-hintRows)
+	if m.mode != modeNormal {
+		t.Fatalf("clicking Esc did not close the dialog: mode %v", m.mode)
 	}
 }

@@ -204,9 +204,7 @@ func (m *model) hintSpans() []hintSpan {
 // hintAt returns the hint whose key was clicked at x on the hint rows, if any.
 // Both rows count: the keys sit on the top one and the tips right below it.
 func (m *model) hintAt(x, y int) (hint, bool) {
-	if m.mode == modeForm || m.mode == modePrompt || y < m.h-hintRows || y >= m.h {
-		// Only the list view has clickable hints; dialogs and forms keep
-		// their keys to themselves.
+	if y < m.h-hintRows || y >= m.h {
 		return hint{}, false
 	}
 	for _, s := range m.hintSpans() {
@@ -227,6 +225,8 @@ func (m *model) clickHint(h hint) tea.Cmd {
 		return m.onKey(tea.KeyMsg{Type: tea.KeyTab})
 	case "Esc":
 		return m.onKey(tea.KeyMsg{Type: tea.KeyEsc})
+	case "⌃S":
+		return m.onKey(tea.KeyMsg{Type: tea.KeyCtrlS})
 	}
 	if len([]rune(h.key)) != 1 {
 		// "↑↓" and the like name several keys, so there is nothing unambiguous

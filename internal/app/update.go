@@ -435,6 +435,11 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 				m.form.clampScroll()
 			}
 		default:
+			// The hint rows sit outside the box but are not "outside": they
+			// run their key, so a click on ⌃S saves instead of cancelling.
+			if h, ok := m.hintAt(e.X, e.Y); ok && left {
+				return m.clickHint(h)
+			}
 			if m.clickOutsideForm(e) {
 				m.form, m.formMsg, m.mode = nil, "", modeNormal
 			} else if left {
@@ -444,7 +449,12 @@ func (m *model) onMouse(e tea.MouseMsg) tea.Cmd {
 		return nil
 	case modePrompt:
 		// A click outside the box cancels, like Esc; inside, the input keeps
-		// its cursor where it was.
+		// its cursor where it was. The hint rows run their key instead.
+		if press && left {
+			if h, ok := m.hintAt(e.X, e.Y); ok {
+				return m.clickHint(h)
+			}
+		}
 		if press && m.ctxClickOutsideDialog(e) {
 			m.mode = modeNormal
 			m.promptMsg = ""

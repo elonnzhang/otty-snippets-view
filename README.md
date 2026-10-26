@@ -106,7 +106,7 @@ The selected tab and the detail height are saved in `groups.json`.
 
 From a cleared selection, `↓` selects the first row and `↑` the last one.
 
-New and rename group, new and edit snippet, and the delete confirmation open a box in the middle of the screen; the list stays visible around it. A click outside the box cancels, and a name that is rejected keeps the box open with the reason inside it.
+New and rename group, new and edit snippet, and the delete confirmation open a box in the middle of the screen; the list stays visible around it. A click outside the box cancels, except on the hint rows, which keep running their key (`⌃S` saves, `⏎` confirms, `Esc` cancels). A name that is rejected keeps the box open with the reason inside it.
 
 Form: `Tab` / `⇧Tab` switches fields, `⌃S` saves, `Esc` cancels. Alias is required and cannot contain spaces. A long body grows the box to at most two thirds of the screen and scrolls inside it beyond that (`↑`/`↓` mark what is out of view, the wheel scrolls it), and typing keeps the caret in view. Click anywhere in a field — name, alias or the body — to put the caret on that character and keep typing there.
 
@@ -156,7 +156,7 @@ Herdr has no widget slot in its own sidebar, so the plugin opens a split pane �
 - `groups.json`: groups, manual assignments (`"none"` pins a snippet to Ungrouped), item colors and UI state. A corrupt file is renamed to `groups.json.bad`.
 - `trash/`: deleted recipes, named `<timestamp>-<id>.ottyrecipe`.
 
-Changes made in Otty's Recipes settings are picked up within a second.
+Changes made in Otty's Recipes settings are picked up within a second. The other direction is not live: Otty does not watch the recipes folder. It loads the list at launch and updates it for changes made inside Otty, so a snippet added here shows up in Otty's Recipes settings and command palette only after Otty is restarted (`otty config reload` does not re-read it). This view always shows the files as they are on disk.
 
 ## Development
 
